@@ -143,11 +143,11 @@ export default function InvoiceForm() {
   }
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current!,
+    content: () => printRef.current,
     documentTitle: `Invoice_${invoiceNumber}`,
     onAfterPrint: () => console.log('Printed successfully'),
-    onError: (err) => console.error('Print failed:', err),
-  })
+    onError: (err: unknown) => console.error('Print failed:', err),
+  });
   
   const handleSaveInvoice = async () => {
     if (!user) {

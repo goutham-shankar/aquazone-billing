@@ -116,6 +116,8 @@ export default function Home() {
     }
   }, []);
 
+  // Get current active tab
+  
 
   // Update current tab data
   const updateActiveTab = (updates: Partial<BillingTab>) => {
