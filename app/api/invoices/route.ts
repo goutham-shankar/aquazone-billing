@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       .orderBy('createdAt', 'desc')
       .get()
 
-    const invoices = snapshot.docs.map((doc: any) => ({
+    const invoices = snapshot.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data()
     }))

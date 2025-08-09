@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
   X, 
-  User, 
   Pause, 
   Play, 
   Clock,
@@ -44,8 +43,6 @@ const BillingTabs: React.FC<BillingTabsProps> = ({
   onPauseTab,
   onResumeTab
 }) => {
-  const [draggedTab, setDraggedTab] = useState<string | null>(null);
-
   const getTabDisplayName = (tab: BillingTab) => {
     if (tab.customerInfo.name) {
       return tab.customerInfo.name;
@@ -87,9 +84,7 @@ const BillingTabs: React.FC<BillingTabsProps> = ({
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.9, x: -20 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
-                className={`relative flex items-center min-w-0 max-w-48 group ${
-                  draggedTab === tab.id ? 'z-50' : ''
-                }`}
+                className={`relative flex items-center min-w-0 max-w-48 group`}
               >
                 <motion.button
                   onClick={() => onTabChange(tab.id)}

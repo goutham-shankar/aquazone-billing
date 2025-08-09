@@ -40,8 +40,6 @@ export interface BillingTab {
 
 interface NavigationHeaderProps {
   toggleMenu?: () => void;
-  toggleFullscreen?: () => void;
-  isFullscreen?: boolean;
   // Tab-related props
   tabs: BillingTab[];
   activeTabId: string;
@@ -54,8 +52,6 @@ interface NavigationHeaderProps {
 
 const NavigationHeader: React.FC<NavigationHeaderProps> = ({
   toggleMenu,
-  toggleFullscreen,
-  isFullscreen,
   tabs,
   activeTabId,
   onTabChange,
@@ -67,7 +63,6 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close user menu when clicking outside
@@ -247,9 +242,7 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
                   animate={{ opacity: 1, scale: 1, x: 0 }}
                   exit={{ opacity: 0, scale: 0.9, x: -20 }}
                   transition={{ duration: 0.2, delay: index * 0.03 }}
-                  className={`relative flex items-center min-w-0 max-w-48 group ${
-                    draggedTab === tab.id ? 'z-50' : ''
-                  }`}
+                  className={`relative flex items-center min-w-0 max-w-48 group`}
                 >
                   <motion.button
                     onClick={() => onTabChange(tab.id)}

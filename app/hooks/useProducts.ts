@@ -7,6 +7,31 @@ import { toast } from 'react-hot-toast';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://x2zlcvi4af.execute-api.ap-south-1.amazonaws.com/dev';
 
+interface ApiProductResponse {
+  _id: string;
+  id?: string;
+  name: string;
+  category: {
+    _id?: string;
+    name?: string;
+    description?: string;
+  } | string;
+  price: number;
+  image?: string;
+  description?: string;
+  inStock?: boolean;
+  sku?: string;
+  subCategory?: string;
+  stock?: number;
+  wholesalePrice?: number;
+  retailPrice?: number;
+  brand?: string;
+  remarks?: string;
+  imageUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const useProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -15,7 +40,7 @@ export const useProducts = () => {
   const { user, getIdToken } = useAuth();
 
   // Helper function to transform product data from API response
-  const transformProductData = (product: any): Product => ({
+  const transformProductData = (product: ApiProductResponse): Product => ({
     _id: product._id,
     id: product._id || product.id, // Support both formats
     name: product.name,

@@ -24,7 +24,11 @@ interface OrderSummaryProps {
   compact?: boolean;
 }
 
-const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummaryChange, compact = false }) => {
+const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ 
+  summary, 
+  onSummaryChange, 
+  compact = false // eslint-disable-line @typescript-eslint/no-unused-vars
+}) => {
   const [isPaidAlready, setIsPaidAlready] = useState(false);
   const [isCalculatingChange, setIsCalculatingChange] = useState(false);
   const [hasTip, setHasTip] = useState(false);
