@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './context/Authcontext';
-import Header from './components/Layout/Header';
+import NavigationHeader, { BillingTab } from './components/Layout/NavigationHeader';
 
 import OrderTypeSelector from './components/Orderform/Ordertypeselector';
 import CustomerInfoForm from './components/Orderform/Customerinfo';
@@ -61,6 +61,244 @@ export default function Home() {
   // Active tab for product catalog
   const [activeProductTab, setActiveProductTab] = useState<'catalog' | 'order'>('catalog');
   
+  // Multi-tab billing state
+  const [billingTabs, setBillingTabs] = useState<BillingTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>('');
+
+  // Helper function to generate unique tab ID
+  const generateTabId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  };
+
+  // Helper function to create a new tab
+  const createNewTab = (): BillingTab => {
+    return {
+      id: generateTabId(),
+      label: 'New Bill',
+      customerInfo: {
+        name: '',
+        address: '',
+        email: ''
+      },
+      billItems: [],
+      summary: {
+        totalQuantity: 0,
+        subTotal: 0,
+        discount: 0,
+        tax: 0,
+        deliveryCharge: 0,
+        containerCharge: 0,
+        grandTotal: 0,
+        customerPaid: 0,
+        returnToCustomer: 0,
+        tip: 0
+      },
+      orderType: 'delivery',
+      paymentMethod: 'cash',
+      isPaused: false,
+      createdAt: new Date(),
+      lastActivity: new Date()
+    };
+  };
+
+  // Initialize with first tab
+  useEffect(() => {
+    if (billingTabs.length === 0) {
+      const firstTab = createNewTab();
+      setBillingTabs([firstTab]);
+      setActiveTabId(firstTab.id);
+      // Initialize local state with first tab data
+      setCustomerInfo(firstTab.customerInfo);
+      setBillItems(firstTab.billItems);
+      setSummary(firstTab.summary);
+      setOrderType(firstTab.orderType);
+      setPaymentMethod(firstTab.paymentMethod);
+    }
+  }, []);
+
+  // Get current active tab
+  const activeTab = billingTabs.find(tab => tab.id === activeTabId);
+
+  // Update current tab data
+  const updateActiveTab = (updates: Partial<BillingTab>) => {
+    setBillingTabs(tabs => 
+      tabs.map(tab => 
+        tab.id === activeTabId 
+          ? { ...tab, ...updates, lastActivity: new Date() }
+          : tab
+      )
+    );
+  };
+
+  // Tab management functions
+  const handleCreateTab = () => {
+    const newTab = createNewTab();
+    setBillingTabs(tabs => [...tabs, newTab]);
+    setActiveTabId(newTab.id);
+    // Clear local state for new tab
+    setCustomerInfo(newTab.customerInfo);
+    setBillItems(newTab.billItems);
+    setSummary(newTab.summary);
+    setOrderType(newTab.orderType);
+    setPaymentMethod(newTab.paymentMethod);
+    toast.success('New billing tab created');
+  };
+
+  const handleTabChange = (tabId: string) => {
+    // Save current tab state before switching
+    if (activeTabId && activeTabId !== tabId) {
+      updateActiveTab({
+        customerInfo,
+        billItems,
+        summary,
+        orderType,
+        paymentMethod
+      });
+    }
+    
+    setActiveTabId(tabId);
+    const tab = billingTabs.find(t => t.id === tabId);
+    if (tab) {
+      // Update local state with tab data
+      setCustomerInfo(tab.customerInfo);
+      setBillItems(tab.billItems);
+      setSummary(tab.summary);
+      setOrderType(tab.orderType);
+      setPaymentMethod(tab.paymentMethod);
+    }
+  };
+
+  const handleCloseTab = (tabId: string) => {
+    if (billingTabs.length <= 1) {
+      toast.error('Cannot close the last tab');
+      return;
+    }
+    
+    const tabToClose = billingTabs.find(t => t.id === tabId);
+    if (tabToClose && (tabToClose.billItems.length > 0 || tabToClose.customerInfo.name)) {
+      if (!window.confirm('This tab has unsaved data. Are you sure you want to close it?')) {
+        return;
+      }
+    }
+
+    setBillingTabs(tabs => tabs.filter(tab => tab.id !== tabId));
+    
+    if (activeTabId === tabId) {
+      const remainingTabs = billingTabs.filter(tab => tab.id !== tabId);
+      if (remainingTabs.length > 0) {
+        setActiveTabId(remainingTabs[0].id);
+        handleTabChange(remainingTabs[0].id);
+      }
+    }
+    
+    toast.success('Tab closed');
+  };
+
+  const handlePauseTab = (tabId: string) => {
+    setBillingTabs(tabs => 
+      tabs.map(tab => 
+        tab.id === tabId 
+          ? { ...tab, isPaused: true, lastActivity: new Date() }
+          : tab
+      )
+    );
+    toast.success('Tab paused - you can work on other customers');
+  };
+
+  const handleResumeTab = (tabId: string) => {
+    setBillingTabs(tabs => 
+      tabs.map(tab => 
+        tab.id === tabId 
+          ? { ...tab, isPaused: false, lastActivity: new Date() }
+          : tab
+      )
+    );
+    toast.success('Tab resumed');
+  };
+
+  // Sync current state changes with active tab (debounced)
+  useEffect(() => {
+    if (activeTabId) {
+      const timeoutId = setTimeout(() => {
+        updateActiveTab({
+          customerInfo,
+          billItems,
+          summary,
+          orderType,
+          paymentMethod
+        });
+      }, 500); // Debounce updates by 500ms
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [customerInfo, billItems, summary, orderType, paymentMethod, activeTabId]);
+  
+  // Function to load sample data for testing
+  const loadSampleData = () => {
+    const sampleCustomer: CustomerInfo = {
+      name: 'John Doe',
+      mobile: '+91 9876543210',
+      email: 'john.doe@example.com',
+      address: '123 Main Street, Sample City - 123456'
+    };
+    
+    const sampleItems: BillItem[] = [
+      {
+        id: 1,
+        name: 'Bottled Water 1L',
+        price: 20,
+        quantity: 5,
+        amount: 100,
+        specialNote: 'Chilled'
+      },
+      {
+        id: 2, 
+        name: 'Water Can 20L',
+        price: 45,
+        quantity: 2,
+        amount: 90,
+        specialNote: ''
+      },
+      {
+        id: 3,
+        name: 'Soda Bottle 500ml',
+        price: 25,
+        quantity: 3,
+        amount: 75,
+        specialNote: 'Cold drink'
+      }
+    ];
+    
+    setCustomerInfo(sampleCustomer);
+    setBillItems(sampleItems);
+    setOrderType('delivery');
+    setPaymentMethod('cash');
+    
+    // Calculate summary
+    const subTotal = sampleItems.reduce((sum, item) => sum + item.amount, 0);
+    const discount = 15;
+    const tax = 25;
+    const deliveryCharge = 30;
+    const containerCharge = 5;
+    const grandTotal = subTotal - discount + tax + deliveryCharge + containerCharge;
+    
+    const newSummary: OrderSummary = {
+      subTotal,
+      discount,
+      tax,
+      deliveryCharge,
+      containerCharge,
+      grandTotal,
+      totalQuantity: sampleItems.reduce((sum, item) => sum + item.quantity, 0),
+      customerPaid: 350,
+      returnToCustomer: 350 - grandTotal,
+      tip: 0
+    };
+    
+    setSummary(newSummary);
+    toast.success('Sample bill data loaded!');
+  };
+  
   // Function to save the invoice
   const onSave = async () => {
     try {
@@ -70,13 +308,6 @@ export default function Home() {
       }
       
       setIsSaving(true);
-      
-      // Get the authentication token
-      const idToken = await getIdToken();
-      
-      if (!idToken) {
-        throw new Error('Authentication failed');
-      }
       
       // Create the invoice object
       const invoice = {
@@ -88,25 +319,51 @@ export default function Home() {
         dateTime: new Date().toISOString(),
       };
       
-      // Send to API
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify(invoice)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save invoice');
+      try {
+        // Get the authentication token
+        const idToken = await getIdToken();
+        
+        if (!idToken) {
+          throw new Error('Authentication failed');
+        }
+        
+        // Send to API
+        const response = await fetch('/api/invoices', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify(invoice)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('API Response:', errorText);
+          throw new Error('Failed to save to server');
+        }
+        
+        const data = await response.json();
+        toast.success("Invoice saved successfully!");
+        return data.id;
+        
+      } catch (apiError) {
+        console.warn('API save failed, using local storage fallback:', apiError);
+        
+        // Fallback: Save to localStorage for demo purposes
+        const invoiceId = 'INV-' + Date.now();
+        const localInvoices = JSON.parse(localStorage.getItem('localInvoices') || '[]');
+        localInvoices.push({
+          id: invoiceId,
+          ...invoice,
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem('localInvoices', JSON.stringify(localInvoices));
+        
+        toast.success("Invoice saved locally (demo mode)!");
+        return invoiceId;
       }
       
-      const data = await response.json();
-      toast.success("Invoice saved successfully!");
-      
-      return data.id;
     } catch (error) {
       console.error('Error saving invoice:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to save invoice');
@@ -298,24 +555,35 @@ export default function Home() {
   };
 
   const clearOrder = () => {
-    setBillItems([]);
-    setCustomerInfo({
-      name: '',
-      address: '',
-      email: ''
-    });
-    setSummary({
-      totalQuantity: 0,
-      subTotal: 0,
-      discount: 0,
-      tax: 0,
-      deliveryCharge: 0,
-      containerCharge: 0,
-      grandTotal: 0,
-      customerPaid: 0,
-      returnToCustomer: 0,
-      tip: 0
-    });
+    const clearedData = {
+      customerInfo: {
+        name: '',
+        address: '',
+        email: ''
+      },
+      billItems: [],
+      summary: {
+        totalQuantity: 0,
+        subTotal: 0,
+        discount: 0,
+        tax: 0,
+        deliveryCharge: 0,
+        containerCharge: 0,
+        grandTotal: 0,
+        customerPaid: 0,
+        returnToCustomer: 0,
+        tip: 0
+      }
+    };
+
+    // Update local state
+    setBillItems(clearedData.billItems);
+    setCustomerInfo(clearedData.customerInfo);
+    setSummary(clearedData.summary);
+
+    // Update the active tab
+    updateActiveTab(clearedData);
+    
     toast.success("Order cleared");
   };
 
@@ -378,13 +646,20 @@ export default function Home() {
       
       
       <div className="flex-1 flex flex-col h-screen relative">
-        <Header 
+        <NavigationHeader 
           toggleMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           toggleFullscreen={toggleFullscreen}
           isFullscreen={isFullscreen}
+          tabs={billingTabs}
+          activeTabId={activeTabId}
+          onTabChange={handleTabChange}
+          onCreateTab={handleCreateTab}
+          onCloseTab={handleCloseTab}
+          onPauseTab={handlePauseTab}
+          onResumeTab={handleResumeTab}
         />
         
-        <div className="flex h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex h-[calc(100vh-180px)] max-h-[calc(100vh-180px)] overflow-hidden">{/* Adjusted height for larger header */}
           {/* Left Section - Customer Info & Order Items */}
           <div className="w-2/5 flex flex-col p-2 h-full">
             {/* Top row with date/time and quick actions */}
@@ -411,6 +686,15 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Clear
+                </button>
+                <button 
+                  onClick={loadSampleData}
+                  className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Sample
                 </button>
               </div>
             </div>
@@ -621,7 +905,7 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow-sm p-2 mt-1 flex-shrink-0">
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-md p-3 mt-1 flex-shrink-0 border border-gray-200">
               <ActionButtons 
                 isSaving={isSaving}
                 onSave={onSave}
@@ -643,9 +927,20 @@ export default function Home() {
                 onReset={clearOrder}
                 onExit={() => router.push('/dashboard')}
                 onHold={() => {
-                  toast.success("Order placed on hold");
+                  if (activeTabId) {
+                    handlePauseTab(activeTabId);
+                    // Create a new tab for the next customer
+                    handleCreateTab();
+                  }
                 }}
-                compact={true} // Add compact prop to your component
+                compact={true}
+                billData={{
+                  customerInfo,
+                  billItems,
+                  summary,
+                  orderType,
+                  paymentMethod
+                }}
               />
             </div>
           </div>

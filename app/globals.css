@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  /* IE and Edge */
+  -ms-overflow-style: none;
+  
+  /* Firefox */
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  /* Safari and Chrome */
+  display: none;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;

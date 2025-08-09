@@ -190,59 +190,88 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
   // If compact mode is enabled, render a more condensed form
   if (compact) {
     return (
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="relative">
-            <input
-              type="text"
-              id="customer-mobile-compact"
-              name="mobile"
-              value={customerInfo.mobile || ''}
-              onChange={handleChange}
-              className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Mobile *"
-            />
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              id="customer-name-compact"
-              name="name"
-              value={customerInfo.name || ''}
-              onChange={handleChange}
-              className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Name *"
-            />
+      <motion.div 
+        className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200 w-full"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+      >
+        <div className="flex items-center justify-center mb-3">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
+            <User className="w-4 h-4 mr-1" />
+            Customer Info
           </div>
         </div>
-        <div className="relative">
-          <input
-            type="email"
-            id="customer-email-compact"
-            name="email"
-            value={customerInfo.email || ''}
-            onChange={handleChange}
-            className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Email (optional)"
-          />
+        
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <motion.div 
+              className="relative"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.2 }}
+            >
+              <input
+                type="text"
+                id="customer-mobile-compact"
+                name="mobile"
+                value={customerInfo.mobile || ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border-2 border-purple-200 rounded-lg focus:outline-none focus:border-purple-400 bg-white hover:border-purple-300 transition-all duration-200 shadow-sm"
+                placeholder="📱 Mobile *"
+              />
+            </motion.div>
+            <motion.div 
+              className="relative"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.2 }}
+            >
+              <input
+                type="text"
+                id="customer-name-compact"
+                name="name"
+                value={customerInfo.name || ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 text-sm border-2 border-green-200 rounded-lg focus:outline-none focus:border-green-400 bg-white hover:border-green-300 transition-all duration-200 shadow-sm"
+                placeholder="👤 Name *"
+              />
+            </motion.div>
+          </div>
+          <motion.div 
+            className="relative"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <input
+              type="email"
+              id="customer-email-compact"
+              name="email"
+              value={customerInfo.email || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2.5 text-sm border-2 border-orange-200 rounded-lg focus:outline-none focus:border-orange-400 bg-white hover:border-orange-300 transition-all duration-200 shadow-sm"
+              placeholder="📧 Email (optional)"
+            />
+          </motion.div>
+          <motion.div 
+            className="relative"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <input
+              type="text"
+              id="customer-address-compact"
+              name="address"
+              value={customerInfo.address || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2.5 text-sm border-2 border-teal-200 rounded-lg focus:outline-none focus:border-teal-400 bg-white hover:border-teal-300 transition-all duration-200 shadow-sm"
+              placeholder="🏠 Address *"
+            />
+          </motion.div>
         </div>
-        <div className="relative">
-          <input
-            type="text"
-            id="customer-address-compact"
-            name="address"
-            value={customerInfo.address || ''}
-            onChange={handleChange}
-            className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Address *"
-          />
-        </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg p-4 border border-blue-100 max-w-2xl mx-auto">
+    <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg p-4 border border-blue-100 max-w-3xl mx-auto">
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
