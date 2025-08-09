@@ -116,8 +116,6 @@ export default function Home() {
     }
   }, []);
 
-  // Get current active tab
-  const activeTab = billingTabs.find(tab => tab.id === activeTabId);
 
   // Update current tab data
   const updateActiveTab = (updates: Partial<BillingTab>) => {

@@ -70,7 +70,7 @@ export const useProducts = () => {
   });
 
   // Helper function to prepare product data for API
-  const prepareProductForAPI = (productData: any) => {
+  const prepareProductForAPI = (productData: Partial<Product>) => {
     // Create a copy to avoid mutating the original object
     const prepared = { ...productData };
     

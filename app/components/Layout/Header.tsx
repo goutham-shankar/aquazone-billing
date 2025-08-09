@@ -13,7 +13,7 @@ interface HeaderProps {
   isFullscreen?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ toggleMenu, toggleFullscreen, isFullscreen }) => {
+const Header: React.FC<HeaderProps> = ({ toggleMenu }) => {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
