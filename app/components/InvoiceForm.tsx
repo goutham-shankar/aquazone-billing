@@ -65,9 +65,9 @@ const InvoicePrintContent = React.forwardRef<HTMLDivElement, InvoicePrintContent
                 <tr key={index} className="border-b">
                   <td className="py-2">{item.description}</td>
                   <td className="text-right py-2">{item.quantity}</td>
-                  <td className="text-right py-2">${item.price.toFixed(2)}</td>
+                  <td className="text-right py-2">₹{item.price.toFixed(2)}</td>
                   <td className="text-right py-2">
-                    ${(item.quantity * item.price).toFixed(2)}
+                    ₹{(item.quantity * item.price).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -75,7 +75,7 @@ const InvoicePrintContent = React.forwardRef<HTMLDivElement, InvoicePrintContent
             <tfoot>
               <tr>
                 <td colSpan={3} className="text-right py-2 font-bold">Total:</td>
-                <td className="text-right py-2 font-bold">${total.toFixed(2)}</td>
+                <td className="text-right py-2 font-bold">₹{total.toFixed(2)}</td>
               </tr>
             </tfoot>
           </table>
@@ -294,8 +294,8 @@ export default function InvoiceForm() {
                 <tr key={index} className="border-b dark:border-gray-700">
                   <td className="py-2">{item.description}</td>
                   <td className="text-right py-2">{item.quantity}</td>
-                  <td className="text-right py-2">${item.price.toFixed(2)}</td>
-                  <td className="text-right py-2">${(item.quantity * item.price).toFixed(2)}</td>
+                  <td className="text-right py-2">₹{item.price.toFixed(2)}</td>
+                  <td className="text-right py-2">₹{(item.quantity * item.price).toFixed(2)}</td>
                   <td className="text-right py-2">
                     <button onClick={() => removeItem(index)} className="text-red-600 hover:text-red-800">
                       <FiTrash2 />
@@ -307,7 +307,7 @@ export default function InvoiceForm() {
             <tfoot>
               <tr>
                 <td colSpan={3} className="text-right py-2 font-bold">Total:</td>
-                <td className="text-right py-2 font-bold">${calculateTotal().toFixed(2)}</td>
+                <td className="text-right py-2 font-bold">₹{calculateTotal().toFixed(2)}</td>
                 <td></td>
               </tr>
             </tfoot>

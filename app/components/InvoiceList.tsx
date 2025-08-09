@@ -97,7 +97,7 @@ export default function InvoiceList() {
                   {invoice.date}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                  ${invoice.amount.toFixed(2)}
+                  ₹{invoice.amount.toFixed(2)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(invoice.status)}`}>

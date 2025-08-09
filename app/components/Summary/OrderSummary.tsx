@@ -16,13 +16,15 @@ import {
   HelpCircle
 } from 'lucide-react';
 import Tooltip from '../ui/Tooltip';
+import { formatCurrency } from '../../utils/currency';
 
 interface OrderSummaryProps {
   summary: OrderSummary;
   onSummaryChange: (field: keyof OrderSummary, value: number) => void;
+  compact?: boolean;
 }
 
-const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummaryChange }) => {
+const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummaryChange, compact = false }) => {
   const [isPaidAlready, setIsPaidAlready] = useState(false);
   const [isCalculatingChange, setIsCalculatingChange] = useState(false);
   const [hasTip, setHasTip] = useState(false);
@@ -45,12 +47,12 @@ const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummary
   // Calculate and update return amount when customer paid changes
   useEffect(() => {
     if (summary.customerPaid > 0) {
-      const returnAmount = parseFloat((summary.customerPaid - summary.finalTotal).toFixed(2));
+      const returnAmount = parseFloat((summary.customerPaid - summary.grandTotal).toFixed(2));
       onSummaryChange('returnToCustomer', returnAmount > 0 ? returnAmount : 0);
     } else {
       onSummaryChange('returnToCustomer', 0);
     }
-  }, [summary.customerPaid, summary.finalTotal, onSummaryChange]);
+  }, [summary.customerPaid, summary.grandTotal, onSummaryChange]);
 
   // Toggle already paid status
   const handlePaidAlreadyToggle = () => {
@@ -58,7 +60,7 @@ const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummary
     
     // If marked as paid, set customer paid equal to grand total
     if (!isPaidAlready) {
-      onSummaryChange('customerPaid', summary.finalTotal);
+      onSummaryChange('customerPaid', summary.grandTotal);
       onSummaryChange('returnToCustomer', 0);
     } else {
       onSummaryChange('customerPaid', 0);
@@ -106,16 +108,16 @@ const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummary
         </div>
         
         <div className="text-right text-gray-600">Sub Total</div>
-        <div className="text-right font-medium">£{summary.subTotal.toFixed(2)}</div>
+        <div className="text-right font-medium">{formatCurrency(summary.subTotal)}</div>
         
         <div className="text-right text-red-500 flex items-center justify-end gap-1">
           <Tag className="w-4 h-4" />
           <span>Discount</span>
         </div>
-        <div className="text-right font-medium text-red-500">-£{summary.discount.toFixed(2)}</div>
+        <div className="text-right font-medium text-red-500">-{formatCurrency(summary.discount)}</div>
         
         <div className="text-right text-gray-600">Total</div>
-        <div className="text-right font-medium">£{summary.grandTotal.toFixed(2)}</div>
+        <div className="text-right font-medium">{formatCurrency(summary.grandTotal)}</div>
       </div>
       
       {/* Charges Section */}
@@ -177,7 +179,7 @@ const OrderSummaryComponent: React.FC<OrderSummaryProps> = ({ summary, onSummary
           transition={{ duration: 2, repeat: Infinity }}
         >
           <span>Grand Total</span>
-          <span className="text-xl font-bold text-primary">£{finalTotal.toFixed(2)}</span>
+          <span className="text-xl font-bold text-primary">{formatCurrency(finalTotal)}</span>
         </motion.div>
       </div>
       

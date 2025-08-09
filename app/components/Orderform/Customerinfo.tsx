@@ -18,15 +18,28 @@ import Tooltip from '../ui/Tooltip';
 interface CustomerInfoFormProps {
   customerInfo: CustomerInfo;
   onCustomerInfoChange: (info: CustomerInfo) => void;
+  compact?: boolean; // Add support for compact mode
 }
 
 interface ValidationErrors {
   [key: string]: string;
 }
 
+// Update CustomerInfo type to include optional fields from your implementation
+declare module '../../types' {
+  interface CustomerInfo {
+    name: string;
+    address: string;
+    email: string;
+    mobile?: string;
+    notes?: string;
+  }
+}
+
 const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({ 
   customerInfo, 
-  onCustomerInfoChange 
+  onCustomerInfoChange,
+  compact = false
 }) => {
   const [focused, setFocused] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -168,48 +181,122 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
 
   // Get input status class based on validation and focus
   const getInputStatusClass = (field: string) => {
-    if (errors[field] && touched[field]) return 'border-red-500 focus:border-red-500 focus:ring-red-500';
-    if (touched[field] && !errors[field]) return 'border-green-500 focus:border-green-500 focus:ring-green-500';
-    if (focused === field) return 'border-blue-500 focus:border-blue-500 focus:ring-blue-500';
-    return 'border-gray-300 focus:border-blue-500 focus:ring-blue-500';
+    if (errors[field] && touched[field]) return 'border-red-400 bg-red-50 focus:border-red-500';
+    if (touched[field] && !errors[field]) return 'border-green-400 bg-green-50 focus:border-green-500';
+    if (focused === field) return 'border-blue-400 bg-blue-50 focus:border-blue-500';
+    return 'border-gray-300 bg-gray-50 focus:border-blue-400 hover:border-gray-400';
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-      <h3 className="text-lg font-medium text-gray-800 mb-4">Customer Information</h3>
-      
-      {/* Mobile Search with Animation */}
-      <div className="mb-6">
+  // If compact mode is enabled, render a more condensed form
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              id="customer-mobile-compact"
+              name="mobile"
+              value={customerInfo.mobile || ''}
+              onChange={handleChange}
+              className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Mobile *"
+            />
+          </div>
+          <div className="relative">
+            <input
+              type="text"
+              id="customer-name-compact"
+              name="name"
+              value={customerInfo.name || ''}
+              onChange={handleChange}
+              className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Name *"
+            />
+          </div>
+        </div>
         <div className="relative">
-          <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-            <Phone className="w-4 h-4 mr-1 text-gray-500" />
-            <span>Find Customer by Mobile:</span>
+          <input
+            type="email"
+            id="customer-email-compact"
+            name="email"
+            value={customerInfo.email || ''}
+            onChange={handleChange}
+            className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Email (optional)"
+          />
+        </div>
+        <div className="relative">
+          <input
+            type="text"
+            id="customer-address-compact"
+            name="address"
+            value={customerInfo.address || ''}
+            onChange={handleChange}
+            className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Address *"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg p-4 border border-blue-100 max-w-2xl mx-auto">
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-center mb-4"
+      >
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-full shadow-md">
+          <h3 className="text-lg font-bold flex items-center">
+            <User className="w-5 h-5 mr-2" />
+            Customer Details
+          </h3>
+        </div>
+      </motion.div>
+      
+      {/* Mobile Search with Fun Animation */}
+      <motion.div 
+        className="mb-4"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="relative bg-white rounded-lg p-3 shadow-sm border border-blue-200">
+          <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+            <div className="bg-blue-100 p-1 rounded-full mr-2">
+              <Phone className="w-3 h-3 text-blue-600" />
+            </div>
+            <span>Quick Customer Search:</span>
             <Tooltip
-              content="Enter a customer's mobile number to search or add a new customer"
+              content="🔍 Search by mobile or add new customer instantly!"
               position="right"
             >
-              <button
+              <motion.button
                 type="button"
-                className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+                className="ml-2 text-blue-400 hover:text-blue-600 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
                 aria-label="Help with mobile search"
                 onClick={() => setShowMobileHelp(!showMobileHelp)}
               >
-                <HelpCircle className="w-3.5 h-3.5" />
-              </button>
+                <HelpCircle className="w-4 h-4" />
+              </motion.button>
             </Tooltip>
           </label>
           
-          <div className="flex items-center">
+          <div className="flex items-center space-x-2">
             <div className="relative flex-grow">
               <input
                 type="text"
                 id="mobile-search"
                 value={mobileSearchTerm}
                 onChange={handleMobileSearchChange}
-                placeholder="Enter 10-digit mobile number"
-                className={`w-full px-4 py-2.5 rounded-l-md border ${
-                  errors.mobileSearch ? 'border-red-500' : 'border-gray-300'
-                } focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-opacity-50 transition-all duration-200`}
+                placeholder="📱 Enter mobile number..."
+                className={`w-full px-3 py-2 rounded-lg border-2 ${
+                  errors.mobileSearch ? 'border-red-300 bg-red-50' : 'border-blue-200 bg-blue-50'
+                } focus:outline-none focus:border-blue-400 focus:bg-white transition-all duration-300 text-sm`}
                 maxLength={10}
                 onFocus={() => handleFocus('mobileSearch')}
                 onBlur={() => setFocused(null)}
@@ -217,80 +304,104 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
               
               <AnimatePresence>
                 {focused === 'mobileSearch' && (
-                  <motion.span
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 5 }}
-                    className="absolute top-0 left-4 transform -translate-y-1/2 text-xs font-medium text-blue-500 bg-white px-1"
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-2 left-3 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-md"
                   >
-                    Mobile Number
-                  </motion.span>
+                    ✨ Mobile Search
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
             
-            <button
+            <motion.button
               type="button"
               onClick={handleLookupCustomer}
-              className="group flex items-center justify-center p-2.5 bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 rounded-none"
+              className="group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-2 rounded-lg shadow-md transition-all duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               aria-label="Search customer"
             >
-              <Search className="h-5 w-5 group-hover:scale-110 transition-transform" />
-            </button>
+              <Search className="h-4 w-4" />
+            </motion.button>
             
-            <button
+            <motion.button
               type="button"
               onClick={handleAddNewCustomer}
-              className="group flex items-center justify-center p-2.5 bg-green-500 hover:bg-green-600 text-white transition-colors duration-200 rounded-r-md"
+              className="group bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-2 rounded-lg shadow-md transition-all duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               aria-label="Add new customer"
             >
-              <PlusCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
-            </button>
+              <PlusCircle className="h-4 w-4" />
+            </motion.button>
           </div>
           
           {/* Mobile Search Error/Help Message */}
           <AnimatePresence>
             {errors.mobileSearch && (
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="flex items-start mt-1 text-sm text-red-500"
-              >
-                <AlertCircle className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
-                <span>{errors.mobileSearch}</span>
-              </motion.p>
-            )}
-            
-            {showMobileHelp && !errors.mobileSearch && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 text-sm text-gray-500 bg-blue-50 p-2 rounded-md"
+                className="flex items-start mt-2 text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-200"
               >
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Enter a 10-digit mobile number to search for existing customers</li>
-                  <li>Click the <Search className="inline h-3 w-3 text-blue-500" /> icon to look up the customer</li>
-                  <li>Click the <PlusCircle className="inline h-3 w-3 text-green-500" /> icon to create a new customer with this number</li>
+                <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                <span>{errors.mobileSearch}</span>
+              </motion.div>
+            )}
+            
+            {showMobileHelp && !errors.mobileSearch && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -10 }}
+                className="mt-2 text-sm text-blue-700 bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-lg border border-blue-200"
+              >
+                <div className="flex items-center mb-2">
+                  <span className="text-lg mr-2">💡</span>
+                  <span className="font-semibold">Quick Tips:</span>
+                </div>
+                <ul className="space-y-1">
+                  <li className="flex items-center">
+                    <span className="text-blue-500 mr-2">🔍</span>
+                    Enter 10-digit mobile to find existing customers
+                  </li>
+                  <li className="flex items-center">
+                    <span className="text-green-500 mr-2">➕</span>
+                    Click plus to create new customer profile
+                  </li>
                 </ul>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
       
       {/* Main Customer Information Form */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-x-4 gap-y-5">
-        <div className="sm:col-span-1 lg:col-span-2">
-          <div className="relative">
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-2 gap-3"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        {/* Mobile Field */}
+        <div className="relative">
+          <motion.div 
+            className="bg-white rounded-lg p-3 shadow-sm border-2 border-purple-200 hover:border-purple-300 transition-all duration-300"
+            whileHover={{ y: -2 }}
+          >
             <label 
               htmlFor="customer-mobile" 
-              className="flex items-center text-sm font-medium text-gray-700 mb-1"
+              className="flex items-center text-sm font-semibold text-gray-700 mb-1"
             >
-              <Phone className="w-4 h-4 mr-1 text-gray-500" />
-              <span>Mobile:</span>
-              <span className="text-red-500 ml-0.5">*</span>
+              <div className="bg-purple-100 p-1 rounded-full mr-2">
+                <Phone className="w-3 h-3 text-purple-600" />
+              </div>
+              <span>📱 Mobile</span>
+              <span className="text-red-500 ml-1">*</span>
             </label>
             
             <input
@@ -301,10 +412,10 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
               onChange={handleChange}
               onFocus={() => handleFocus('mobile')}
               onBlur={handleBlur}
-              className={`input-field w-full px-4 py-2.5 rounded-md border ${
+              className={`w-full px-3 py-2 rounded-lg border-2 ${
                 getInputStatusClass('mobile')
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-opacity-50 transition-all duration-200`}
-              placeholder="10-digit mobile number"
+              } focus:outline-none transition-all duration-300 text-sm`}
+              placeholder="1234567890"
               maxLength={10}
               required
               aria-describedby={errors.mobile ? "mobile-error" : undefined}
@@ -312,17 +423,17 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
             
             <AnimatePresence>
               {touched.mobile && !errors.mobile && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute right-3 top-9 text-green-500"
+                  className="absolute top-2 right-2 text-green-500 bg-green-100 rounded-full p-1"
                 >
-                  <CheckCircle2 className="h-5 w-5" />
-                </motion.span>
+                  <CheckCircle2 className="h-4 w-4" />
+                </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
           
           <AnimatePresence>
             {touched.mobile && errors.mobile && (
@@ -331,24 +442,30 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-start mt-1 text-sm text-red-500"
+                className="flex items-start mt-1 text-xs text-red-600 bg-red-50 p-2 rounded-lg"
               >
-                <AlertCircle className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 <span>{errors.mobile}</span>
               </motion.p>
             )}
           </AnimatePresence>
         </div>
         
-        <div className="sm:col-span-1 lg:col-span-2">
-          <div className="relative">
+        {/* Name Field */}
+        <div className="relative">
+          <motion.div 
+            className="bg-white rounded-lg p-3 shadow-sm border-2 border-green-200 hover:border-green-300 transition-all duration-300"
+            whileHover={{ y: -2 }}
+          >
             <label 
               htmlFor="customer-name" 
-              className="flex items-center text-sm font-medium text-gray-700 mb-1"
+              className="flex items-center text-sm font-semibold text-gray-700 mb-1"
             >
-              <User className="w-4 h-4 mr-1 text-gray-500" />
-              <span>Name:</span>
-              <span className="text-red-500 ml-0.5">*</span>
+              <div className="bg-green-100 p-1 rounded-full mr-2">
+                <User className="w-3 h-3 text-green-600" />
+              </div>
+              <span>👤 Name</span>
+              <span className="text-red-500 ml-1">*</span>
             </label>
             
             <input
@@ -359,27 +476,27 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
               onChange={handleChange}
               onFocus={() => handleFocus('name')}
               onBlur={handleBlur}
-              className={`input-field w-full px-4 py-2.5 rounded-md border ${
+              className={`w-full px-3 py-2 rounded-lg border-2 ${
                 getInputStatusClass('name')
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-opacity-50 transition-all duration-200`}
-              placeholder="Customer name"
+              } focus:outline-none transition-all duration-300 text-sm`}
+              placeholder="John Doe"
               required
               aria-describedby={errors.name ? "name-error" : undefined}
             />
             
             <AnimatePresence>
               {touched.name && !errors.name && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute right-3 top-9 text-green-500"
+                  className="absolute top-2 right-2 text-green-500 bg-green-100 rounded-full p-1"
                 >
-                  <CheckCircle2 className="h-5 w-5" />
-                </motion.span>
+                  <CheckCircle2 className="h-4 w-4" />
+                </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
           
           <AnimatePresence>
             {touched.name && errors.name && (
@@ -388,23 +505,28 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-start mt-1 text-sm text-red-500"
+                className="flex items-start mt-1 text-xs text-red-600 bg-red-50 p-2 rounded-lg"
               >
-                <AlertCircle className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 <span>{errors.name}</span>
               </motion.p>
             )}
           </AnimatePresence>
         </div>
-        
-        <div className="sm:col-span-2 lg:col-span-2">
-          <div className="relative">
+        {/* Email Field - Full Width */}
+        <div className="relative md:col-span-2">
+          <motion.div 
+            className="bg-white rounded-lg p-3 shadow-sm border-2 border-orange-200 hover:border-orange-300 transition-all duration-300"
+            whileHover={{ y: -2 }}
+          >
             <label 
               htmlFor="customer-email" 
-              className="flex items-center text-sm font-medium text-gray-700 mb-1"
+              className="flex items-center text-sm font-semibold text-gray-700 mb-1"
             >
-              <Mail className="w-4 h-4 mr-1 text-gray-500" />
-              <span>Email (optional):</span>
+              <div className="bg-orange-100 p-1 rounded-full mr-2">
+                <Mail className="w-3 h-3 text-orange-600" />
+              </div>
+              <span>📧 Email (optional)</span>
             </label>
             
             <input
@@ -415,26 +537,26 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
               onChange={handleChange}
               onFocus={() => handleFocus('email')}
               onBlur={handleBlur}
-              className={`input-field w-full px-4 py-2.5 rounded-md border ${
+              className={`w-full px-3 py-2 rounded-lg border-2 ${
                 getInputStatusClass('email')
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-opacity-50 transition-all duration-200`}
-              placeholder="customer@example.com"
+              } focus:outline-none transition-all duration-300 text-sm`}
+              placeholder="john@example.com"
               aria-describedby={errors.email ? "email-error" : undefined}
             />
             
             <AnimatePresence>
               {touched.email && !errors.email && customerInfo.email && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute right-3 top-9 text-green-500"
+                  className="absolute top-2 right-2 text-green-500 bg-green-100 rounded-full p-1"
                 >
-                  <CheckCircle2 className="h-5 w-5" />
-                </motion.span>
+                  <CheckCircle2 className="h-4 w-4" />
+                </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
           
           <AnimatePresence>
             {touched.email && errors.email && (
@@ -443,24 +565,30 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-start mt-1 text-sm text-red-500"
+                className="flex items-start mt-1 text-xs text-red-600 bg-red-50 p-2 rounded-lg"
               >
-                <AlertCircle className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 <span>{errors.email}</span>
               </motion.p>
             )}
           </AnimatePresence>
         </div>
         
-        <div className="sm:col-span-2 lg:col-span-4">
-          <div className="relative">
+        {/* Address Field - Full Width */}
+        <div className="relative md:col-span-2">
+          <motion.div 
+            className="bg-white rounded-lg p-3 shadow-sm border-2 border-teal-200 hover:border-teal-300 transition-all duration-300"
+            whileHover={{ y: -2 }}
+          >
             <label 
               htmlFor="customer-address" 
-              className="flex items-center text-sm font-medium text-gray-700 mb-1"
+              className="flex items-center text-sm font-semibold text-gray-700 mb-1"
             >
-              <MapPin className="w-4 h-4 mr-1 text-gray-500" />
-              <span>Address:</span>
-              <span className="text-red-500 ml-0.5">*</span>
+              <div className="bg-teal-100 p-1 rounded-full mr-2">
+                <MapPin className="w-3 h-3 text-teal-600" />
+              </div>
+              <span>🏠 Address</span>
+              <span className="text-red-500 ml-1">*</span>
             </label>
             
             <input
@@ -471,27 +599,27 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
               onChange={handleChange}
               onFocus={() => handleFocus('address')}
               onBlur={handleBlur}
-              className={`input-field w-full px-4 py-2.5 rounded-md border ${
+              className={`w-full px-3 py-2 rounded-lg border-2 ${
                 getInputStatusClass('address')
-              } focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-opacity-50 transition-all duration-200`}
-              placeholder="Delivery address"
+              } focus:outline-none transition-all duration-300 text-sm`}
+              placeholder="123 Main St, City"
               required
               aria-describedby={errors.address ? "address-error" : undefined}
             />
             
             <AnimatePresence>
               {touched.address && !errors.address && (
-                <motion.span
+                <motion.div
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute right-3 top-9 text-green-500"
+                  className="absolute top-2 right-2 text-green-500 bg-green-100 rounded-full p-1"
                 >
-                  <CheckCircle2 className="h-5 w-5" />
-                </motion.span>
+                  <CheckCircle2 className="h-4 w-4" />
+                </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
           
           <AnimatePresence>
             {touched.address && errors.address && (
@@ -500,30 +628,38 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-start mt-1 text-sm text-red-500"
+                className="flex items-start mt-1 text-xs text-red-600 bg-red-50 p-2 rounded-lg"
               >
-                <AlertCircle className="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                 <span>{errors.address}</span>
               </motion.p>
             )}
           </AnimatePresence>
         </div>
         
-        <div className="col-span-full">
-          <div className="relative">
+        {/* Notes Field - Full Width */}
+        <div className="relative md:col-span-2">
+          <motion.div 
+            className="bg-white rounded-lg p-3 shadow-sm border-2 border-pink-200 hover:border-pink-300 transition-all duration-300"
+            whileHover={{ y: -2 }}
+          >
             <label 
               htmlFor="customer-notes" 
-              className="flex items-center text-sm font-medium text-gray-700 mb-1"
+              className="flex items-center text-sm font-semibold text-gray-700 mb-1"
             >
-              <StickyNote className="w-4 h-4 mr-1 text-gray-500" />
-              <span>Special Note:</span>
-              <Tooltip content="Add any special delivery instructions, preferences, or allergies">
-                <button
+              <div className="bg-pink-100 p-1 rounded-full mr-2">
+                <StickyNote className="w-3 h-3 text-pink-600" />
+              </div>
+              <span>📝 Special Notes</span>
+              <Tooltip content="💡 Add delivery instructions, preferences, or allergies">
+                <motion.button
                   type="button"
-                  className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="ml-2 text-pink-400 hover:text-pink-600 transition-colors"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
-                </button>
+                </motion.button>
               </Tooltip>
             </label>
             
@@ -534,10 +670,10 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
               onChange={handleChange}
               onFocus={() => handleFocus('notes')}
               onBlur={() => setFocused(null)}
-              className={`w-full px-4 py-3 rounded-md border ${
-                focused === 'notes' ? 'border-blue-500 ring-2 ring-blue-500 ring-opacity-50' : 'border-gray-300'
-              } focus:outline-none transition-all duration-200 min-h-[80px] resize-y`}
-              placeholder="Enter any special instructions or notes here..."
+              className={`w-full px-3 py-2 rounded-lg border-2 ${
+                focused === 'notes' ? 'border-pink-400 bg-pink-50' : 'border-pink-200 bg-pink-50'
+              } focus:outline-none transition-all duration-300 min-h-[60px] resize-y text-sm`}
+              placeholder="Any special instructions? (allergies, delivery notes, etc.)"
             />
             
             <AnimatePresence>
@@ -546,21 +682,29 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 5 }}
-                  className="absolute bottom-2 right-2 text-xs text-gray-400"
+                  className="absolute bottom-2 right-3 text-xs text-pink-500 bg-white px-2 py-1 rounded-full shadow-sm"
                 >
-                  {customerInfo.notes?.length || 0} characters
+                  {customerInfo.notes?.length || 0} chars
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
       
-      {/* Required Fields Notice */}
-      <div className="mt-4 flex items-center text-sm text-gray-500">
-        <AlertCircle className="w-4 h-4 mr-1 text-gray-400" />
-        <span>Fields marked with <span className="text-red-500">*</span> are required</span>
-      </div>
+      {/* Fun Required Fields Notice */}
+      <motion.div 
+        className="mt-4 flex items-center justify-center text-sm text-gray-600 bg-gradient-to-r from-red-50 to-pink-50 p-3 rounded-lg border border-red-200"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      >
+        <div className="flex items-center">
+          <span className="text-lg mr-2">⚡</span>
+          <AlertCircle className="w-4 h-4 mr-2 text-red-400" />
+          <span>Fields with <span className="text-red-500 font-semibold">*</span> are required for order processing</span>
+        </div>
+      </motion.div>
     </div>
   );
 };

@@ -8,6 +8,7 @@ interface ActionButtonsProps {
   onExit: () => void;
   onHold: () => void;
   isSaving: boolean;
+  compact?: boolean;
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -17,7 +18,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onReset,
   onExit,
   onHold,
-  isSaving
+  isSaving,
+  compact = false
 }) => {
   return (
     <div className="flex flex-col md:flex-row justify-between gap-4 mt-4">
