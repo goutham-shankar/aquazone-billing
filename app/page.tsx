@@ -4,7 +4,7 @@ import { Plus, Search, Calendar, User, Calculator, Printer, Send, Save, X, Edit3
 
 // Firebase auth functions (replace with actual Firebase imports)
 import { auth } from './lib/firebase'; // Add your Firebase config path
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
 
 // Dark Mode Context
 const DarkModeContext = createContext({
@@ -61,7 +61,16 @@ type User = {
   displayName: string;
 };
 
-// Removed getCurrentUser (unused)
+const getCurrentUser = (): User | null => {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return null;
+  
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    displayName: firebaseUser.displayName || firebaseUser.email || 'User'
+  };
+};
 
 const signOut = async () => {
   try {
@@ -119,24 +128,24 @@ const fetchProducts = async (searchTerm: string = ''): Promise<Product[]> => {
     const data = await response.json();
     const productsArray = Array.isArray(data) ? data : data.products || data.data || [];
     
-    return productsArray.map((item: Product | Record<string, unknown>) => ({
-      id: (item as any)._id ?? (item as any).id ?? '',
-      name: (item as any).name ?? (item as any).productName ?? '',
-      description: (item as any).description ?? '',
-      price: parseFloat((item as any).price ?? (item as any).unitPrice ?? '0'),
-      category: typeof (item as any).category === 'object' && (item as any).category?.name
-        ? (item as any).category.name
-        : (item as any).category ?? 'Uncategorized',
-      stock: parseInt((item as any).stock ?? (item as any).quantity ?? '0'),
-      image: (item as any).image ?? (item as any).imageUrl ?? '',
-      sku: (item as any).sku ?? (item as any).productCode ?? '',
-      barcode: (item as any).barcode ?? '',
-      pluCode: (item as any).pluCode ?? (item as any).plu ?? '',
-      taxRate: parseFloat((item as any).taxRate ?? '0.18'),
-      taxIncluded: (item as any).taxIncluded ?? false,
-      wholesalePrice: parseFloat((item as any).wholesalePrice ?? '0'),
-      retailPrice: parseFloat((item as any).retailPrice ?? '0'),
-      subCategory: (item as any).subCategory ?? '',
+    return productsArray.map((item: any) => ({
+      id: item._id || item.id,
+      name: item.name || item.productName || '',
+      description: item.description || '',
+      price: parseFloat(item.price || item.unitPrice || 0),
+      category: typeof item.category === 'object' && item.category?.name 
+        ? item.category.name 
+        : item.category || 'Uncategorized',
+      stock: parseInt(item.stock || item.quantity || 0),
+      image: item.image || item.imageUrl || '',
+      sku: item.sku || item.productCode || '',
+      barcode: item.barcode || '',
+      pluCode: item.pluCode || item.plu || '',
+      taxRate: parseFloat(item.taxRate || 0.18),
+      taxIncluded: item.taxIncluded || false,
+      wholesalePrice: parseFloat(item.wholesalePrice || 0),
+      retailPrice: parseFloat(item.retailPrice || 0),
+      subCategory: item.subCategory || '',
     }));
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -400,7 +409,7 @@ const ModernBillingUI = () => {
     setIsProductModalOpen(false);
   };
 
-  const updateItem = (id: number, field: keyof InvoiceItem, value: string | number | boolean) => {
+  const updateItem = (id: number, field: keyof InvoiceItem, value: any) => {
     setInvoice(prev => ({
       ...prev,
       items: prev.items.map(item => {
