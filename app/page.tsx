@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { Plus, Search, Calendar, User, Calculator, Printer, Send, Save, X, Edit3, LogOut, ShoppingCart, Package, Users, Settings, Building, Sun, Moon, Menu, Bell, FileText } from 'lucide-react';
+import { Plus, Search, Calendar, User, Calculator, Printer, Send, Save, X, Edit3, LogOut, ShoppingCart, Package, Users, Settings, Building, Sun, Moon, Menu, Bell, FileText, Monitor } from 'lucide-react';
 
 // Firebase auth functions (replace with actual Firebase imports)
 import { auth } from './lib/firebase'; // Add your Firebase config path
@@ -9,10 +9,22 @@ import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } 
 // Dark Mode Context
 const DarkModeContext = createContext({
   isDarkMode: false,
-  toggleDarkMode: () => {}
+  toggleDarkMode: () => { }
 });
 
 const useDarkMode = () => useContext(DarkModeContext);
+
+// Terminal Context
+const TerminalContext = createContext({
+  terminals: [] as Terminal[],
+  activeTerminalId: '',
+  addTerminal: () => { },
+  removeTerminal: (id: string) => { },
+  setActiveTerminal: (id: string) => { },
+  updateTerminalInvoice: (id: string, invoice: any) => { }
+});
+
+const useTerminals = () => useContext(TerminalContext);
 
 // Type definitions
 type Product = {
@@ -61,10 +73,28 @@ type User = {
   displayName: string;
 };
 
+type Terminal = {
+  id: string;
+  name: string;
+  invoice: {
+    invoiceNumber: string;
+    date: string;
+    dueDate: string;
+    terms: string;
+    salesRep: string;
+    customer: Customer;
+    items: InvoiceItem[];
+    discount: number;
+    delivery: number;
+  };
+  createdAt: Date;
+  lastActivity: Date;
+};
+
 const getCurrentUser = (): User | null => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
-  
+
   return {
     uid: firebaseUser.uid,
     email: firebaseUser.email || '',
@@ -127,14 +157,14 @@ const fetchProducts = async (searchTerm: string = ''): Promise<Product[]> => {
 
     const data = await response.json();
     const productsArray = Array.isArray(data) ? data : data.products || data.data || [];
-    
+
     return productsArray.map((item: any) => ({
       id: item._id || item.id,
       name: item.name || item.productName || '',
       description: item.description || '',
       price: parseFloat(item.price || item.unitPrice || 0),
-      category: typeof item.category === 'object' && item.category?.name 
-        ? item.category.name 
+      category: typeof item.category === 'object' && item.category?.name
+        ? item.category.name
         : item.category || 'Uncategorized',
       stock: parseInt(item.stock || item.quantity || 0),
       image: item.image || item.imageUrl || '',
@@ -158,13 +188,11 @@ const DarkModeProvider = ({ children }: { children: React.ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('darkMode');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setIsDarkMode(saved ? JSON.parse(saved) : prefersDark);
+    setIsDarkMode(prefersDark);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -183,6 +211,156 @@ const DarkModeProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Terminal Provider Component
+const TerminalProvider = ({ children }: { children: React.ReactNode }) => {
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [activeTerminalId, setActiveTerminalId] = useState('');
+
+  const createNewInvoice = () => ({
+    invoiceNumber: `INV${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
+    date: new Date().toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    terms: 'Net 30',
+    salesRep: 'Sales Representative',
+    customer: {
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      taxId: ''
+    } as Customer,
+    items: [] as InvoiceItem[],
+    discount: 0,
+    delivery: 0,
+  });
+
+  const addTerminal = () => {
+    const terminalNumber = terminals.length + 1;
+    const now = new Date();
+    const newTerminal: Terminal = {
+      id: `terminal_${Date.now()}`,
+      name: `Terminal ${terminalNumber}`,
+      invoice: createNewInvoice(),
+      createdAt: now,
+      lastActivity: now
+    };
+
+    setTerminals(prev => [...prev, newTerminal]);
+    setActiveTerminalId(newTerminal.id);
+  };
+
+  const removeTerminal = (id: string) => {
+    if (terminals.length === 1) return; // Don't remove last terminal
+
+    setTerminals(prev => {
+      const filtered = prev.filter(t => t.id !== id);
+      if (activeTerminalId === id && filtered.length > 0) {
+        setActiveTerminalId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
+  const setActiveTerminal = (id: string) => {
+    setActiveTerminalId(id);
+    setTerminals(prev =>
+      prev.map(terminal =>
+        terminal.id === id
+          ? { ...terminal, lastActivity: new Date() }
+          : terminal
+      )
+    );
+  };
+
+  const updateTerminalInvoice = (id: string, invoice: any) => {
+    setTerminals(prev =>
+      prev.map(terminal =>
+        terminal.id === id
+          ? { ...terminal, invoice, lastActivity: new Date() }
+          : terminal
+      )
+    );
+  };
+
+  // Initialize with one terminal
+  useEffect(() => {
+    if (terminals.length === 0) {
+      const now = new Date();
+      const initialTerminal: Terminal = {
+        id: 'terminal_initial',
+        name: 'Terminal 1',
+        invoice: createNewInvoice(),
+        createdAt: now,
+        lastActivity: now
+      };
+      setTerminals([initialTerminal]);
+      setActiveTerminalId(initialTerminal.id);
+    }
+  }, []);
+
+  return (
+    <TerminalContext.Provider value={{
+      terminals,
+      activeTerminalId,
+      addTerminal,
+      removeTerminal,
+      setActiveTerminal,
+      updateTerminalInvoice
+    }}>
+      {children}
+    </TerminalContext.Provider>
+  );
+};
+
+// Terminal Tabs Component
+const TerminalTabs = () => {
+  const { terminals, activeTerminalId, addTerminal, removeTerminal, setActiveTerminal } = useTerminals();
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+      <div className="flex items-center space-x-1 overflow-x-auto">
+        {terminals.map((terminal) => (
+          <div
+            key={terminal.id}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-t-lg cursor-pointer transition-colors min-w-0 ${activeTerminalId === terminal.id
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-b-2 border-blue-500'
+                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+              }`}
+            onClick={() => setActiveTerminal(terminal.id)}
+          >
+            <Monitor className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium truncate">{terminal.name}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 bg-gray-200 dark:bg-gray-600 px-1 rounded">
+              {terminal.invoice.items.length}
+            </span>
+            {terminals.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeTerminal(terminal.id);
+                }}
+                className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 ml-1 flex-shrink-0"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={addTerminal}
+          className="flex items-center space-x-1 px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="text-sm">New Terminal</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Enhanced Navbar Component
 const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void }) => {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -192,9 +370,7 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
     <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
       <div className="px-6 py-3">
         <div className="flex items-center justify-between">
-          {/* Left Section - Brand & Navigation */}
           <div className="flex items-center space-x-6">
-            {/* Brand */}
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Calculator className="h-6 w-6 text-white" />
@@ -205,7 +381,6 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
               </div>
             </div>
 
-            {/* Navigation Items */}
             <div className="hidden lg:flex items-center space-x-1">
               <button className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                 <FileText className="h-4 w-4 mr-2" />
@@ -222,9 +397,7 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
             </div>
           </div>
 
-          {/* Right Section - Actions & User */}
           <div className="flex items-center space-x-3">
-            {/* Action Buttons */}
             <div className="hidden md:flex items-center space-x-2">
               <button className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm">
                 <Save className="h-4 w-4 mr-1" />
@@ -236,12 +409,10 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
               </button>
             </div>
 
-            {/* Notifications */}
             <button className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
               <Bell className="h-5 w-5" />
             </button>
 
-            {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
               className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -249,7 +420,6 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
-            {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -264,7 +434,6 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
                 </div>
               </button>
 
-              {/* Dropdown Menu */}
               {isMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                   <div className="p-3 border-b border-gray-200 dark:border-gray-700">
@@ -296,7 +465,6 @@ const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void
               )}
             </div>
 
-            {/* Mobile Menu Button */}
             <button className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
               <Menu className="h-5 w-5" />
             </button>
@@ -311,29 +479,14 @@ const ModernBillingUI = () => {
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCustomerFormOpen, setIsCustomerFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [invoice, setInvoice] = useState({
-    invoiceNumber: `INV${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
-    date: new Date().toISOString().split('T')[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    terms: 'Net 30',
-    salesRep: 'Sales Representative',
-    customer: {
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      taxId: ''
-    } as Customer,
-    items: [] as InvoiceItem[],
-    discount: 0,
-    delivery: 0,
-  });
+
+  const { terminals, activeTerminalId, updateTerminalInvoice } = useTerminals();
+  const activeTerminal = terminals.find(t => t.id === activeTerminalId);
+  const invoice = activeTerminal?.invoice;
 
   // Initialize user and fetch products on mount
   useEffect(() => {
@@ -345,7 +498,7 @@ const ModernBillingUI = () => {
           displayName: firebaseUser.displayName || firebaseUser.email || 'User'
         };
         setUser(user);
-        
+
         try {
           await loadProducts();
         } catch (error) {
@@ -354,6 +507,8 @@ const ModernBillingUI = () => {
       } else {
         setUser(null);
         setProducts([]);
+        // Redirect to login page when no user
+        window.location.href = '/login';
       }
     });
 
@@ -384,14 +539,16 @@ const ModernBillingUI = () => {
 
   const handleSearch = useCallback(async (term: string) => {
     setSearchTerm(term);
-    if (term.trim()) {
-      await loadProducts(term);
-    } else {
-      await loadProducts();
-    }
-  }, []);
+    if (searchTimeout) clearTimeout(searchTimeout);
+    const timeout = setTimeout(() => {
+      loadProducts(term);
+    }, 400);
+    setSearchTimeout(timeout);
+  }, [searchTimeout]);
 
   const addProductToInvoice = (product: Product) => {
+    if (!activeTerminal || !invoice) return;
+
     const newItem: InvoiceItem = {
       id: Date.now(),
       itemCode: product.sku,
@@ -402,58 +559,73 @@ const ModernBillingUI = () => {
       taxable: !product.taxIncluded,
       lineTotal: product.price,
     };
-    setInvoice(prev => ({
-      ...prev,
-      items: [...prev.items, newItem]
-    }));
+
+    const updatedInvoice = {
+      ...invoice,
+      items: [...invoice.items, newItem]
+    };
+
+    updateTerminalInvoice(activeTerminal.id, updatedInvoice);
     setIsProductModalOpen(false);
   };
 
+  const updateInvoice = (updates: any) => {
+    if (!activeTerminal || !invoice) return;
+
+    const updatedInvoice = { ...invoice, ...updates };
+    updateTerminalInvoice(activeTerminal.id, updatedInvoice);
+  };
+
   const updateItem = (id: number, field: keyof InvoiceItem, value: any) => {
-    setInvoice(prev => ({
-      ...prev,
-      items: prev.items.map(item => {
-        if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
-          if (field === 'quantity' || field === 'price') {
-            updatedItem.lineTotal = updatedItem.quantity * updatedItem.price;
-          }
-          return updatedItem;
+    if (!activeTerminal || !invoice) return;
+
+    const updatedItems = invoice.items.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, [field]: value };
+        if (field === 'quantity' || field === 'price') {
+          updatedItem.lineTotal = updatedItem.quantity * updatedItem.price;
         }
-        return item;
-      })
-    }));
+        return updatedItem;
+      }
+      return item;
+    });
+
+    updateInvoice({ items: updatedItems });
   };
 
   const removeItem = (id: number) => {
-    setInvoice(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.id !== id)
-    }));
+    if (!activeTerminal || !invoice) return;
+
+    const updatedItems = invoice.items.filter(item => item.id !== id);
+    updateInvoice({ items: updatedItems });
   };
 
   const updateCustomer = (field: keyof Customer, value: string) => {
-    setInvoice(prev => ({
-      ...prev,
-      customer: { ...prev.customer, [field]: value }
-    }));
+    if (!activeTerminal || !invoice) return;
+
+    const updatedCustomer = { ...invoice.customer, [field]: value };
+    updateInvoice({ customer: updatedCustomer });
   };
 
   const calculateTotals = () => {
+    if (!invoice) return { subtotal: 0, discount: 0, tax: 0, total: 0 };
+
     const subtotal = invoice.items.reduce((sum, item) => sum + item.lineTotal, 0);
     const discountAmount = subtotal * (invoice.discount / 100);
     const taxableAmount = subtotal - discountAmount;
-    const tax = invoice.items.reduce((sum, item) => 
+    const tax = invoice.items.reduce((sum, item) =>
       item.taxable ? sum + (item.lineTotal * 0.18) : sum, 0
     );
     const total = taxableAmount + tax + invoice.delivery;
-    
+
     return { subtotal, discount: discountAmount, tax, total };
   };
 
   const totals = calculateTotals();
 
   const addNewItem = () => {
+    if (!activeTerminal || !invoice) return;
+
     const newItem: InvoiceItem = {
       id: Date.now(),
       itemCode: '',
@@ -464,7 +636,9 @@ const ModernBillingUI = () => {
       taxable: true,
       lineTotal: 0,
     };
-    setInvoice((prev) => ({ ...prev, items: [...prev.items, newItem] }));
+
+    const updatedItems = [...invoice.items, newItem];
+    updateInvoice({ items: updatedItems });
   };
 
   const handleSignOut = async () => {
@@ -493,7 +667,7 @@ const ModernBillingUI = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Authentication Required</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">Please sign in to access New Golden Aquazone Billing System.</p>
-          <button 
+          <button
             onClick={() => window.location.href = '/login'}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-lg"
           >
@@ -504,60 +678,69 @@ const ModernBillingUI = () => {
     );
   }
 
+  if (!activeTerminal || !invoice) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <DarkModeProvider>
       <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex flex-col transition-colors duration-200">
-        {/* Enhanced Navbar */}
         <EnhancedNavbar user={user} onSignOut={handleSignOut} />
+        <TerminalTabs />
 
         {/* Main Content */}
         <div className="flex-1 flex gap-3 p-3 overflow-hidden">
           {/* Left Panel - 70% */}
           <div className="flex-1 flex flex-col gap-3 overflow-hidden">
-            {/* Company & Customer Info */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 h-40 border dark:border-gray-700">
-              <div className="grid grid-cols-2 gap-6 h-full">
-                {/* Bill From */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
-                    <Building className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
-                    Bill From
-                  </h3>
-                  <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">New Golden Aquazone</div>
-                    <div>Premium Aquarium Solutions</div>
-                    <div>Mumbai, Maharashtra, India</div>
-                    <div>+91 98765 43210 | info@newgoldenaquazone.com</div>
-                  </div>
-                </div>
-
-                {/* Bill To */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
-                    <Users className="h-4 w-4 mr-1 text-green-600 dark:text-green-400" />
-                    Bill To
-                    <button 
-                      onClick={() => setIsCustomerFormOpen(true)}
-                      className="ml-auto flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded text-xs transition-colors"
-                    >
-                      <Edit3 className="h-3 w-3 mr-1" />
-                      Edit
-                    </button>
-                  </h3>
-                  <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                      {invoice.customer.name || 'No customer selected'}
-                    </div>
-                    <div>{invoice.customer.email}</div>
-                    <div>{invoice.customer.phone}</div>
-                    <div>{invoice.customer.address && `${invoice.customer.address}, ${invoice.customer.city} ${invoice.customer.state} ${invoice.customer.zipCode}`}</div>
-                  </div>
-                </div>
+            {/* Customer Info */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                  <User className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
+                  Bill To
+                </h3>
+                <button
+                  onClick={() => setIsCustomerFormOpen(true)}
+                  className="flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <Edit3 className="h-3 w-3 mr-1" />
+                  {invoice.customer.name ? 'Edit' : 'Add Customer'}
+                </button>
               </div>
+              {invoice.customer.name ? (
+                <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                  <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                    {invoice.customer.name}
+                  </p>
+                  {invoice.customer.email && <p>{invoice.customer.email}</p>}
+                  {invoice.customer.phone && <p>{invoice.customer.phone}</p>}
+                  {invoice.customer.address && (
+                    <p>
+                      {invoice.customer.address}, {invoice.customer.city} {invoice.customer.state} {invoice.customer.zipCode}
+                    </p>
+                  )}
+                  {invoice.customer.taxId && <p className="font-mono text-xs pt-1">GSTIN: {invoice.customer.taxId}</p>}
+                </div>
+              ) : (
+                <div
+                  onClick={() => setIsCustomerFormOpen(true)}
+                  className="flex items-center justify-center h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                >
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <Plus className="h-5 w-5 mx-auto mb-1" />
+                    <p className="text-sm font-medium">Add Customer</p>
+                  </div>
+                </div>
+              )}
             </div>
 
+
             {/* Invoice Details */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 h-24 border dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
               <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
                 <Calendar className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
                 Invoice Details
@@ -568,7 +751,7 @@ const ModernBillingUI = () => {
                   <input
                     type="text"
                     value={invoice.invoiceNumber}
-                    onChange={(e) => setInvoice(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                    onChange={(e) => updateInvoice({ invoiceNumber: e.target.value })}
                     className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -577,7 +760,7 @@ const ModernBillingUI = () => {
                   <input
                     type="date"
                     value={invoice.date}
-                    onChange={(e) => setInvoice(prev => ({ ...prev, date: e.target.value }))}
+                    onChange={(e) => updateInvoice({ date: e.target.value })}
                     className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -586,7 +769,7 @@ const ModernBillingUI = () => {
                   <input
                     type="date"
                     value={invoice.dueDate}
-                    onChange={(e) => setInvoice(prev => ({ ...prev, dueDate: e.target.value }))}
+                    onChange={(e) => updateInvoice({ dueDate: e.target.value })}
                     className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -594,7 +777,7 @@ const ModernBillingUI = () => {
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Terms</label>
                   <select
                     value={invoice.terms}
-                    onChange={(e) => setInvoice(prev => ({ ...prev, terms: e.target.value }))}
+                    onChange={(e) => updateInvoice({ terms: e.target.value })}
                     className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
                     <option value="Net 30">Net 30</option>
@@ -732,20 +915,20 @@ const ModernBillingUI = () => {
                 <Calculator className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
                 Summary
               </h3>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(totals.subtotal)}</span>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Discount</span>
                   <div className="flex items-center">
                     <input
                       type="number"
                       value={invoice.discount}
-                      onChange={(e) => setInvoice(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => updateInvoice({ discount: parseFloat(e.target.value) || 0 })}
                       className="w-12 px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded mr-1 text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       min="0"
                       max="100"
@@ -754,33 +937,33 @@ const ModernBillingUI = () => {
                     <span className="text-xs text-gray-600 dark:text-gray-400">%</span>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Delivery</span>
                   <input
                     type="number"
                     value={invoice.delivery}
-                    onChange={(e) => setInvoice(prev => ({ ...prev, delivery: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) => updateInvoice({ delivery: parseFloat(e.target.value) || 0 })}
                     className="w-16 px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
                   />
                 </div>
-                
+
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">GST (18%)</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(totals.tax)}</span>
                 </div>
-                
+
                 <div className="flex justify-between py-2 border-t border-gray-200 dark:border-gray-600">
                   <span className="font-bold text-gray-900 dark:text-gray-100">Total</span>
                   <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{formatCurrency(totals.total)}</span>
                 </div>
               </div>
-              
+
               <button className="w-full mt-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
-                Mark as PAID
+                _      Mark as PAID
               </button>
             </div>
 
@@ -801,8 +984,8 @@ const ModernBillingUI = () => {
                   Save as PDF
                 </button>
               </div>
-
-              </div></div>
+            </div>
+          </div>
         </div>
 
         {/* Customer Form Modal */}
@@ -818,7 +1001,7 @@ const ModernBillingUI = () => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -903,7 +1086,7 @@ const ModernBillingUI = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
                 <button
                   onClick={() => setIsCustomerFormOpen(false)}
@@ -935,7 +1118,7 @@ const ModernBillingUI = () => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="p-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
                 <div className="relative">
                   <Search className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -948,7 +1131,7 @@ const ModernBillingUI = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-40">
@@ -975,13 +1158,12 @@ const ModernBillingUI = () => {
                             <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{product.description}</p>
                             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                               <span>SKU: {product.sku}</span>
-                              <span className={`px-2 py-1 rounded-full ${
-                                product.stock > 10 
-                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
-                                  : product.stock > 0 
-                                  ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' 
-                                  : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                              }`}>
+                              <span className={`px-2 py-1 rounded-full ${product.stock > 10
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                                  : product.stock > 0
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                                    : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                }`}>
                                 {product.stock}
                               </span>
                             </div>
@@ -998,7 +1180,7 @@ const ModernBillingUI = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3 flex-shrink-0">
                 <button
                   onClick={() => setIsProductModalOpen(false)}
@@ -1021,4 +1203,10 @@ const ModernBillingUI = () => {
   );
 };
 
-export default ModernBillingUI;
+const App = () => (
+  <TerminalProvider>
+    <ModernBillingUI />
+  </TerminalProvider>
+);
+
+export default App;
