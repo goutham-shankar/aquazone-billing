@@ -10,7 +10,7 @@ export interface BillItem {
 
 export type OrderType = 'delivery' | 'pickup' | 'dinein';
 
-export type PaymentMethod = 'cash' | 'card' | 'due' | 'others' | 'part';
+export type PaymentMethod = 'cash' | 'card' | 'due' | 'others' | 'part' | 'upi' | 'wallet' | 'gift_card' | 'split';
 
 export interface BasicCustomerInfo {
   name: string;
@@ -30,8 +30,60 @@ export interface OrderSummary {
   returnToCustomer: number;
   tip: number;
 }
-// Add this to your existing types.ts file
 
+export interface HeldBillInfo {
+  id: string;
+  items: number;
+  customer: string;
+  timestamp: Date;
+}
+
+export interface Customer {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  avatarUrl?: string;
+}
+
+export interface InvoiceItem {
+  id: number;
+  productId: number;
+  productName: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  sku: string;
+  taxRate?: number;
+  taxAmount?: number;
+  taxIncluded?: boolean;
+}
+
+export interface InvoiceDetails {
+  invoiceNumber: string;
+  subject: string;
+  dueDate: string;
+  currency: string;
+  customer: Customer;
+  items: InvoiceItem[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  taxRate: number;
+  total: number;
+  amountDue: number;
+  paymentMethod: PaymentMethod | string;
+  status: 'active' | 'hold' | 'completed' | 'cancelled';
+  amountPaid: number;
+  change: number;
+}
+
+export interface HeldBill {
+  id: string;
+  invoice: InvoiceDetails;
+  timestamp: Date;
+}
 export interface Category {
   _id: string;
   name: string;
@@ -40,7 +92,7 @@ export interface Category {
 
 export interface Product {
   _id?: string;
-  id?: string;  // Keeping for backwards compatibility
+  id: number;  // Changed to number to match with page.tsx
   name: string;
   category: Category | string;
   subCategory?: string;
@@ -50,11 +102,17 @@ export interface Product {
   retailPrice?: number;
   brand?: string;
   remarks?: string;
-  description?: string;
+  description: string;
   image?: string;
-  imageUrl?: string;  // Keeping for backwards compatibility
+  imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
+  sku: string;
+  barcode?: string;
+  pluCode?: string;
+  taxRate?: number;
+  taxIncluded?: boolean;
+
 }
 export interface CustomerInfo {
   name: string;
@@ -76,15 +134,15 @@ export interface PaymentDetails {
   expiryDate?: string;
   cvc?: string;
   cardholderName?: string;
-  
+
   // Cash payment details
   amountReceived?: number;
   changeAmount?: number;
-  
+
   // Part payment details
   partialAmount?: number;
   remainingAmount?: number;
-  
+
   // Additional details can be added as needed
   reference?: string;
   savePaymentMethod?: boolean;

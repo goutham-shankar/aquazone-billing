@@ -1,951 +1,1015 @@
-'use client';
+"use client"
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { Plus, Search, Calendar, User, Calculator, Printer, Send, Save, X, Edit3, LogOut, ShoppingCart, Package, Users, Settings, Building, Sun, Moon, Menu, Bell, FileText } from 'lucide-react';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from './context/Authcontext';
-import NavigationHeader, { BillingTab } from './components/Layout/NavigationHeader';
+// Firebase auth functions (replace with actual Firebase imports)
+import { auth } from './lib/firebase'; // Add your Firebase config path
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 
-import OrderTypeSelector from './components/Orderform/Ordertypeselector';
-import CustomerInfoForm from './components/Orderform/Customerinfo';
-import BillTable from './components/BillTable/BillTable';
-import OrderSummaryComponent from './components/Summary/OrderSummary';
-import PaymentMethods from './components/Payment/PaymentMeth';
-import ActionButtons from './components/ActionButtons/ActionButton';
-import { OrderType, CustomerInfo, BillItem, PaymentMethod, OrderSummary, Product } from './types';
-import { useProducts } from './hooks/useProducts';
-import { toast } from 'react-hot-toast';
+// Dark Mode Context
+const DarkModeContext = createContext({
+  isDarkMode: false,
+  toggleDarkMode: () => {}
+});
 
-export default function Home() {
-  const { user, loading, getIdToken } = useAuth();
-  const router = useRouter();
-  const [orderType, setOrderType] = useState<OrderType>('delivery');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  // Use our custom hook for products
-  const { 
-    products, 
-    isLoading: isLoadingProducts, 
-    error: productError, 
-    fetchProducts 
-  } = useProducts();
-  
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: '',
-    address: '',
-    email: ''
-  });
-  
-  // Initialize with empty bill items
-  const [billItems, setBillItems] = useState<BillItem[]>([]);
-  
-  const [summary, setSummary] = useState<OrderSummary>({
-    totalQuantity: 0,
-    subTotal: 0,
-    discount: 0,
-    tax: 0,
-    deliveryCharge: 0,
-    containerCharge: 0,
-    grandTotal: 0,
-    customerPaid: 0,
-    returnToCustomer: 0,
-    tip: 0
-  });
-  
-  // Saving state
-  const [isSaving, setIsSaving] = useState(false);
-  
-  // Get formatted date and time
-  const [currentDateTime, setCurrentDateTime] = useState('');
-  
-  // Active tab for product catalog
-  const [activeProductTab, setActiveProductTab] = useState<'catalog' | 'order'>('catalog');
-  
-  // Multi-tab billing state
-  const [billingTabs, setBillingTabs] = useState<BillingTab[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string>('');
+const useDarkMode = () => useContext(DarkModeContext);
 
-  // Helper function to generate unique tab ID
-  const generateTabId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  };
+// Type definitions
+type Product = {
+  id: number | string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  stock: number;
+  image: string;
+  sku: string;
+  barcode: string;
+  pluCode: string;
+  taxRate: number;
+  taxIncluded: boolean;
+  wholesalePrice?: number;
+  retailPrice?: number;
+  subCategory?: string;
+};
 
-  // Helper function to create a new tab
-  const createNewTab = (): BillingTab => {
-    return {
-      id: generateTabId(),
-      label: 'New Bill',
-      customerInfo: {
-        name: '',
-        address: '',
-        email: ''
-      },
-      billItems: [],
-      summary: {
-        totalQuantity: 0,
-        subTotal: 0,
-        discount: 0,
-        tax: 0,
-        deliveryCharge: 0,
-        containerCharge: 0,
-        grandTotal: 0,
-        customerPaid: 0,
-        returnToCustomer: 0,
-        tip: 0
-      },
-      orderType: 'delivery',
-      paymentMethod: 'cash',
-      isPaused: false,
-      createdAt: new Date(),
-      lastActivity: new Date()
-    };
-  };
+type InvoiceItem = {
+  id: number;
+  itemCode: string;
+  name: string;
+  description: string;
+  quantity: number;
+  price: number;
+  taxable: boolean;
+  lineTotal: number;
+};
 
-  // Initialize with first tab
-  useEffect(() => {
-    if (billingTabs.length === 0) {
-      const firstTab = createNewTab();
-      setBillingTabs([firstTab]);
-      setActiveTabId(firstTab.id);
-      // Initialize local state with first tab data
-      setCustomerInfo(firstTab.customerInfo);
-      setBillItems(firstTab.billItems);
-      setSummary(firstTab.summary);
-      setOrderType(firstTab.orderType);
-      setPaymentMethod(firstTab.paymentMethod);
-    }
-  }, []);
+type Customer = {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  taxId: string;
+};
 
-  // Get current active tab
-  
+type User = {
+  uid: string;
+  email: string;
+  displayName: string;
+};
 
-  // Update current tab data
-  const updateActiveTab = (updates: Partial<BillingTab>) => {
-    setBillingTabs(tabs => 
-      tabs.map(tab => 
-        tab.id === activeTabId 
-          ? { ...tab, ...updates, lastActivity: new Date() }
-          : tab
-      )
-    );
-  };
+// Removed getCurrentUser (unused)
 
-  // Tab management functions
-  const handleCreateTab = () => {
-    const newTab = createNewTab();
-    setBillingTabs(tabs => [...tabs, newTab]);
-    setActiveTabId(newTab.id);
-    // Clear local state for new tab
-    setCustomerInfo(newTab.customerInfo);
-    setBillItems(newTab.billItems);
-    setSummary(newTab.summary);
-    setOrderType(newTab.orderType);
-    setPaymentMethod(newTab.paymentMethod);
-    toast.success('New billing tab created');
-  };
-
-  const handleTabChange = (tabId: string) => {
-    // Save current tab state before switching
-    if (activeTabId && activeTabId !== tabId) {
-      updateActiveTab({
-        customerInfo,
-        billItems,
-        summary,
-        orderType,
-        paymentMethod
-      });
-    }
-    
-    setActiveTabId(tabId);
-    const tab = billingTabs.find(t => t.id === tabId);
-    if (tab) {
-      // Update local state with tab data
-      setCustomerInfo(tab.customerInfo);
-      setBillItems(tab.billItems);
-      setSummary(tab.summary);
-      setOrderType(tab.orderType);
-      setPaymentMethod(tab.paymentMethod);
-    }
-  };
-
-  const handleCloseTab = (tabId: string) => {
-    if (billingTabs.length <= 1) {
-      toast.error('Cannot close the last tab');
-      return;
-    }
-    
-    const tabToClose = billingTabs.find(t => t.id === tabId);
-    if (tabToClose && (tabToClose.billItems.length > 0 || tabToClose.customerInfo.name)) {
-      if (!window.confirm('This tab has unsaved data. Are you sure you want to close it?')) {
-        return;
-      }
-    }
-
-    setBillingTabs(tabs => tabs.filter(tab => tab.id !== tabId));
-    
-    if (activeTabId === tabId) {
-      const remainingTabs = billingTabs.filter(tab => tab.id !== tabId);
-      if (remainingTabs.length > 0) {
-        setActiveTabId(remainingTabs[0].id);
-        handleTabChange(remainingTabs[0].id);
-      }
-    }
-    
-    toast.success('Tab closed');
-  };
-
-  const handlePauseTab = (tabId: string) => {
-    setBillingTabs(tabs => 
-      tabs.map(tab => 
-        tab.id === tabId 
-          ? { ...tab, isPaused: true, lastActivity: new Date() }
-          : tab
-      )
-    );
-    toast.success('Tab paused - you can work on other customers');
-  };
-
-  const handleResumeTab = (tabId: string) => {
-    setBillingTabs(tabs => 
-      tabs.map(tab => 
-        tab.id === tabId 
-          ? { ...tab, isPaused: false, lastActivity: new Date() }
-          : tab
-      )
-    );
-    toast.success('Tab resumed');
-  };
-
-  // Sync current state changes with active tab (debounced)
-  useEffect(() => {
-    if (activeTabId) {
-      const timeoutId = setTimeout(() => {
-        updateActiveTab({
-          customerInfo,
-          billItems,
-          summary,
-          orderType,
-          paymentMethod
-        });
-      }, 500); // Debounce updates by 500ms
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [customerInfo, billItems, summary, orderType, paymentMethod, activeTabId]);
-  
-  // Function to load sample data for testing
-  const loadSampleData = () => {
-    const sampleCustomer: CustomerInfo = {
-      name: 'John Doe',
-      mobile: '+91 9876543210',
-      email: 'john.doe@example.com',
-      address: '123 Main Street, Sample City - 123456'
-    };
-    
-    const sampleItems: BillItem[] = [
-      {
-        id: 1,
-        name: 'Bottled Water 1L',
-        price: 20,
-        quantity: 5,
-        amount: 100,
-        specialNote: 'Chilled'
-      },
-      {
-        id: 2, 
-        name: 'Water Can 20L',
-        price: 45,
-        quantity: 2,
-        amount: 90,
-        specialNote: ''
-      },
-      {
-        id: 3,
-        name: 'Soda Bottle 500ml',
-        price: 25,
-        quantity: 3,
-        amount: 75,
-        specialNote: 'Cold drink'
-      }
-    ];
-    
-    setCustomerInfo(sampleCustomer);
-    setBillItems(sampleItems);
-    setOrderType('delivery');
-    setPaymentMethod('cash');
-    
-    // Calculate summary
-    const subTotal = sampleItems.reduce((sum, item) => sum + item.amount, 0);
-    const discount = 15;
-    const tax = 25;
-    const deliveryCharge = 30;
-    const containerCharge = 5;
-    const grandTotal = subTotal - discount + tax + deliveryCharge + containerCharge;
-    
-    const newSummary: OrderSummary = {
-      subTotal,
-      discount,
-      tax,
-      deliveryCharge,
-      containerCharge,
-      grandTotal,
-      totalQuantity: sampleItems.reduce((sum, item) => sum + item.quantity, 0),
-      customerPaid: 350,
-      returnToCustomer: 350 - grandTotal,
-      tip: 0
-    };
-    
-    setSummary(newSummary);
-    toast.success('Sample bill data loaded!');
-  };
-  
-  // Function to save the invoice
-  const onSave = async () => {
-    try {
-      if (billItems.length === 0) {
-        toast.error("Cannot save an empty order");
-        return null;
-      }
-      
-      setIsSaving(true);
-      
-      // Create the invoice object
-      const invoice = {
-        customerInfo,
-        items: billItems,
-        summary,
-        orderType,
-        paymentMethod,
-        dateTime: new Date().toISOString(),
-      };
-      
-      try {
-        // Get the authentication token
-        const idToken = await getIdToken();
-        
-        if (!idToken) {
-          throw new Error('Authentication failed');
-        }
-        
-        // Send to API
-        const response = await fetch('/api/invoices', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify(invoice)
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('API Response:', errorText);
-          throw new Error('Failed to save to server');
-        }
-        
-        const data = await response.json();
-        toast.success("Invoice saved successfully!");
-        return data.id;
-        
-      } catch (apiError) {
-        console.warn('API save failed, using local storage fallback:', apiError);
-        
-        // Fallback: Save to localStorage for demo purposes
-        const invoiceId = 'INV-' + Date.now();
-        const localInvoices = JSON.parse(localStorage.getItem('localInvoices') || '[]');
-        localInvoices.push({
-          id: invoiceId,
-          ...invoice,
-          createdAt: new Date().toISOString()
-        });
-        localStorage.setItem('localInvoices', JSON.stringify(localInvoices));
-        
-        toast.success("Invoice saved locally (demo mode)!");
-        return invoiceId;
-      }
-      
-    } catch (error) {
-      console.error('Error saving invoice:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to save invoice');
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Add a product from the catalog to the bill
-  const addProductToBill = (product: Product) => {
-    // Get the product ID, handling both id and _id formats
-    const productId = product._id || product.id || '';
-    
-    const existingItem = billItems.find(item => 
-      'productId' in item && item.productId === productId
-    );
-    
-    if (existingItem) {
-      // Increase quantity if product already exists in bill
-      handleItemQuantityChange(existingItem.id, existingItem.quantity + 1);
-      toast.success(`Added another ${product.name} to the order`);
-    } else {
-      // Add new product to bill
-      const newId = billItems.length > 0 ? 
-        Math.max(...billItems.map(item => item.id)) + 1 : 1;
-      
-      const newItem: BillItem = {
-        id: newId,
-        name: product.name,
-        specialNote: '',
-        quantity: 1,
-        price: product.price,
-        amount: product.price,
-        productId: productId // Store reference to product id
-      };
-      
-      setBillItems(prevItems => [...prevItems, newItem]);
-      toast.success(`Added ${product.name} to the order`);
-      setActiveProductTab('order'); // Switch to order tab after adding product
-    }
-  };
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-
-  useEffect(() => {
-    const updateDateTime = () => {
-      const now = new Date();
-      const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-      setCurrentDateTime(formattedDateTime);
-    };
-
-    updateDateTime();
-    const interval = setInterval(updateDateTime, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Calculate totals when bill items change
-  useEffect(() => {
-    const totalQty = billItems.reduce((sum, item) => sum + item.quantity, 0);
-    const subTotal = billItems.reduce((sum, item) => sum + item.amount, 0);
-    
-    setSummary(prev => {
-      // Calculate grand total including all charges
-      const totalWithCharges = subTotal + 
-        (prev.tax || 0) + 
-        (prev.deliveryCharge || 0) + 
-        (prev.containerCharge || 0) - 
-        (prev.discount || 0);
-        
-      const roundedGrandTotal = Math.round(totalWithCharges * 100) / 100;
-      
-      return {
-        ...prev,
-        totalQuantity: totalQty,
-        subTotal: subTotal,
-        grandTotal: roundedGrandTotal,
-        returnToCustomer: Math.max(0, prev.customerPaid - roundedGrandTotal)
-      };
-    });
-  }, [billItems, summary.tax, summary.deliveryCharge, summary.containerCharge, summary.discount]);
-  
-  const handleSummaryChange = (field: keyof OrderSummary, value: number) => {
-    setSummary(prev => {
-      const newSummary = {
-        ...prev,
-        [field]: value
-      };
-      
-      // Recalculate grand total when any charge-related field changes
-      if (['tax', 'deliveryCharge', 'containerCharge', 'discount'].includes(field)) {
-        const totalWithCharges = prev.subTotal + 
-          (field === 'tax' ? value : (prev.tax || 0)) + 
-          (field === 'deliveryCharge' ? value : (prev.deliveryCharge || 0)) + 
-          (field === 'containerCharge' ? value : (prev.containerCharge || 0)) - 
-          (field === 'discount' ? value : (prev.discount || 0));
-        
-        newSummary.grandTotal = Math.round(totalWithCharges * 100) / 100;
-        
-        // Also update return amount if customer has already paid
-        if (prev.customerPaid > 0) {
-          newSummary.returnToCustomer = Math.max(0, prev.customerPaid - newSummary.grandTotal);
-        }
-      }
-      
-      // Update return to customer when paid amount changes
-      if (field === 'customerPaid') {
-        newSummary.returnToCustomer = Math.max(0, value - newSummary.grandTotal);
-      }
-      
-      return newSummary;
-    });
-  };
-
-  const handleItemQuantityChange = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) {
-      // Optionally remove the item if quantity goes below 1
-      removeItem(id);
-      return;
-    }
-    
-    setBillItems(prevItems => 
-      prevItems.map(item => {
-        if (item.id === id) {
-          const newAmount = parseFloat((item.price * newQuantity).toFixed(2));
-          return { ...item, quantity: newQuantity, amount: newAmount };
-        }
-        return item;
-      })
-    );
-  };
-  
-  const handleItemSpecialNoteChange = (id: number, newNote: string) => {
-    setBillItems(prevItems => 
-      prevItems.map(item => {
-        if (item.id === id) {
-          return { ...item, specialNote: newNote };
-        }
-        return item;
-      })
-    );
-  };
-  
-  const addNewItem = () => {
-    const newId = billItems.length > 0 ? 
-      Math.max(...billItems.map(item => item.id)) + 1 : 1;
-    
-    const newItem: BillItem = {
-      id: newId,
-      name: 'New Item',
-      specialNote: '',
-      quantity: 1,
-      price: 0,
-      amount: 0
-    };
-    
-    setBillItems([...billItems, newItem]);
-    toast.success("Added new blank item");
-    setActiveProductTab('order');
-  };
-  
-  const removeItem = (id: number) => {
-    const itemToRemove = billItems.find(item => item.id === id);
-    setBillItems(billItems.filter(item => item.id !== id));
-    
-    if (itemToRemove) {
-      toast.success(`Removed ${itemToRemove.name} from order`);
-    }
-  };
-  
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.log(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    }
-  };
-
-  const clearOrder = () => {
-    const clearedData = {
-      customerInfo: {
-        name: '',
-        address: '',
-        email: ''
-      },
-      billItems: [],
-      summary: {
-        totalQuantity: 0,
-        subTotal: 0,
-        discount: 0,
-        tax: 0,
-        deliveryCharge: 0,
-        containerCharge: 0,
-        grandTotal: 0,
-        customerPaid: 0,
-        returnToCustomer: 0,
-        tip: 0
-      }
-    };
-
-    // Update local state
-    setBillItems(clearedData.billItems);
-    setCustomerInfo(clearedData.customerInfo);
-    setSummary(clearedData.summary);
-
-    // Update the active tab
-    updateActiveTab(clearedData);
-    
-    toast.success("Order cleared");
-  };
-
-  // Filter products by category
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  
-  // Extract unique categories from products
-  const categories = ['all', ...Array.from(new Set(products.map(p => {
-    if (typeof p.category === 'object' && p.category && p.category.name) {
-      return p.category.name;
-    }
-    return typeof p.category === 'string' ? p.category : 'uncategorized';
-  })))];
-  
-  // Filtered products based on selected category
-  const filteredProducts = selectedCategory === 'all'
-    ? products
-    : products.filter(p => {
-        // Handle both string and object categories
-        if (typeof p.category === 'object' && p.category) {
-          return p.category.name === selectedCategory;
-        } else if (typeof p.category === 'string') {
-          return p.category === selectedCategory;
-        }
-        return selectedCategory === 'uncategorized';
-      });
-
-  // Search functionality
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const searchedProducts = searchQuery.trim() === '' 
-    ? filteredProducts 
-    : filteredProducts.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-  // Show loading state while authentication is being checked
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
+const signOut = async () => {
+  try {
+    await firebaseSignOut(auth);
+  } catch (error) {
+    console.error('Error signing out:', error);
+    throw error;
   }
+};
 
-  // If not authenticated and not redirected yet, show nothing
-  if (!user) {
+const getAuthToken = async (): Promise<string | null> => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch (error) {
+    console.error('Error getting auth token:', error);
     return null;
   }
+};
+
+const fetchProducts = async (searchTerm: string = ''): Promise<Product[]> => {
+  try {
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      throw new Error('Authentication required. Please sign in.');
+    }
+
+    const url = new URL('https://x2zlcvi4af.execute-api.ap-south-1.amazonaws.com/dev/product');
+    if (searchTerm.trim()) {
+      url.searchParams.append('search', searchTerm);
+    }
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please sign in again.');
+      }
+      if (response.status === 403) {
+        throw new Error('Access denied. You do not have permission to view products.');
+      }
+      throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const productsArray = Array.isArray(data) ? data : data.products || data.data || [];
+    
+    return productsArray.map((item: Product | Record<string, unknown>) => ({
+      id: (item as any)._id ?? (item as any).id ?? '',
+      name: (item as any).name ?? (item as any).productName ?? '',
+      description: (item as any).description ?? '',
+      price: parseFloat((item as any).price ?? (item as any).unitPrice ?? '0'),
+      category: typeof (item as any).category === 'object' && (item as any).category?.name
+        ? (item as any).category.name
+        : (item as any).category ?? 'Uncategorized',
+      stock: parseInt((item as any).stock ?? (item as any).quantity ?? '0'),
+      image: (item as any).image ?? (item as any).imageUrl ?? '',
+      sku: (item as any).sku ?? (item as any).productCode ?? '',
+      barcode: (item as any).barcode ?? '',
+      pluCode: (item as any).pluCode ?? (item as any).plu ?? '',
+      taxRate: parseFloat((item as any).taxRate ?? '0.18'),
+      taxIncluded: (item as any).taxIncluded ?? false,
+      wholesalePrice: parseFloat((item as any).wholesalePrice ?? '0'),
+      retailPrice: parseFloat((item as any).retailPrice ?? '0'),
+      subCategory: (item as any).subCategory ?? '',
+    }));
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
+};
+
+// Dark Mode Provider Component
+const DarkModeProvider = ({ children }: { children: React.ReactNode }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('darkMode');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDarkMode(saved ? JSON.parse(saved) : prefersDark);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Mobile menu overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        ></div>
-      )}
-      
-      
-      <div className="flex-1 flex flex-col h-screen relative">
-        <NavigationHeader 
-          toggleMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          toggleFullscreen={toggleFullscreen}
-          isFullscreen={isFullscreen}
-          tabs={billingTabs}
-          activeTabId={activeTabId}
-          onTabChange={handleTabChange}
-          onCreateTab={handleCreateTab}
-          onCloseTab={handleCloseTab}
-          onPauseTab={handlePauseTab}
-          onResumeTab={handleResumeTab}
-        />
-        
-        <div className="flex h-[calc(100vh-180px)] max-h-[calc(100vh-180px)] overflow-hidden">{/* Adjusted height for larger header */}
-          {/* Left Section - Customer Info & Order Items */}
-          <div className="w-2/5 flex flex-col p-2 h-full">
-            {/* Top row with date/time and quick actions */}
-            <div className="flex justify-between items-center mb-1 px-2">
-              <div className="text-xs font-medium text-gray-600">
-                {currentDateTime}
+    <DarkModeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
+      {children}
+    </DarkModeContext.Provider>
+  );
+};
+
+// Enhanced Navbar Component
+const EnhancedNavbar = ({ user, onSignOut }: { user: User; onSignOut: () => void }) => {
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  return (
+    <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="px-6 py-3">
+        <div className="flex items-center justify-between">
+          {/* Left Section - Brand & Navigation */}
+          <div className="flex items-center space-x-6">
+            {/* Brand */}
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Calculator className="h-6 w-6 text-white" />
               </div>
-              <div className="flex space-x-1">
-                <button 
-                  onClick={() => fetchProducts()}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 flex items-center"
-                  disabled={isLoadingProducts}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  {isLoadingProducts ? 'Loading...' : 'Refresh'}
-                </button>
-                <button 
-                  onClick={clearOrder}
-                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Clear
-                </button>
-                <button 
-                  onClick={loadSampleData}
-                  className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Sample
-                </button>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">New Golden Aquazone</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Billing System</p>
               </div>
             </div>
-            
-            {/* Customer Info Section */}
-            <div className="bg-white rounded-lg shadow-sm p-2 mb-1 flex-shrink-0">
-              <div className="flex items-center justify-between mb-1">
-                <OrderTypeSelector 
-                  selectedType={orderType} 
-                  onTypeChange={setOrderType} 
-                />
-              </div>
-              <CustomerInfoForm 
-                customerInfo={customerInfo} 
-                onCustomerInfoChange={setCustomerInfo} 
-                compact={true} // Add a compact prop to your component
-              />
-            </div>
-            
-            {/* Bill Section */}
-            <div className="flex flex-col bg-white rounded-lg shadow-sm p-2 flex-grow h-0 overflow-hidden">
-              <div className="flex justify-between items-center mb-1">
-                <h3 className="text-sm font-medium text-gray-800">Order Items</h3>
-                <div className="flex items-center space-x-1">
-                  <button 
-                    onClick={addNewItem}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 flex items-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Item
-                  </button>
-                  <span className="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-md">
-                    Items: {billItems.length}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex-grow overflow-auto">
-                {billItems.length > 0 ? (
-                  <BillTable 
-                    items={billItems} 
-                    onQuantityChange={handleItemQuantityChange}
-                    onSpecialNoteChange={handleItemSpecialNoteChange}
-                    onRemoveItem={removeItem}
-                    compact={true} // Add compact prop to your component
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <p className="text-sm">No items added yet</p>
-                  </div>
-                )}
-              </div>
+
+            {/* Navigation Items */}
+            <div className="hidden lg:flex items-center space-x-1">
+              <button className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <FileText className="h-4 w-4 mr-2" />
+                Billing
+              </button>
+              <button className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                <Package className="h-4 w-4 mr-2" />
+                Products
+              </button>
+              <button className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                <Users className="h-4 w-4 mr-2" />
+                Customers
+              </button>
             </div>
           </div>
-          
-          {/* Middle Section - Product Catalog/Order Tabs */}
-          <div className="w-2/5 p-2 h-full flex flex-col">
-            <div className="bg-white rounded-lg shadow-sm flex flex-col h-full">
-              {/* Tabs */}
-              <div className="flex border-b">
-                <button
-                  className={`flex-1 py-2 text-sm font-medium ${activeProductTab === 'catalog' ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-600'}`}
-                  onClick={() => setActiveProductTab('catalog')}
-                >
-                  Product Catalog
-                </button>
-                <button
-                  className={`flex-1 py-2 text-sm font-medium ${activeProductTab === 'order' ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-600'}`}
-                  onClick={() => setActiveProductTab('order')}
-                >
-                  Order Summary
-                </button>
-              </div>
-              
-              {/* Tab content */}
-              {activeProductTab === 'catalog' && (
-                <div className="flex-grow overflow-hidden flex flex-col p-2">
-                  {/* Search and Category Filters */}
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Search products..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="flex-1 px-3 py-1 border text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="px-2 py-1 border text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+
+          {/* Right Section - Actions & User */}
+          <div className="flex items-center space-x-3">
+            {/* Action Buttons */}
+            <div className="hidden md:flex items-center space-x-2">
+              <button className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm">
+                <Save className="h-4 w-4 mr-1" />
+                Save
+              </button>
+              <button className="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm">
+                <Printer className="h-4 w-4 mr-1" />
+                Print
+              </button>
+            </div>
+
+            {/* Notifications */}
+            <button className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+              <Bell className="h-5 w-5" />
+            </button>
+
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+
+            {/* User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="flex items-center space-x-2 p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                </div>
+                <div className="hidden sm:block text-left">
+                  <div className="text-sm font-medium">{user.displayName || 'User'}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
+                </div>
+              </button>
+
+              {/* Dropdown Menu */}
+              {isMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                    <div className="font-medium text-gray-900 dark:text-white">{user.displayName || 'User'}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                  </div>
+                  <div className="py-2">
+                    <button className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </button>
+                    <hr className="my-2 border-gray-200 dark:border-gray-600" />
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onSignOut();
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
                     >
-                      {categories.map((category) => (
-                        <option key={typeof category === 'string' ? category : 'all'} 
-                                value={typeof category === 'string' ? category : 'all'}>
-                          {category === 'all' ? 'All Categories' : 
-                           (typeof category === 'string' ? 
-                             category.charAt(0).toUpperCase() + category.slice(1) : 
-                             'Unknown')}
-                        </option>
-                      ))}
-                    </select>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </button>
                   </div>
-                  
-                  {productError && (
-                    <div className="bg-red-50 text-red-800 p-2 rounded-md mb-2 text-xs">
-                      {productError}
-                    </div>
-                  )}
-                  
-                  {isLoadingProducts ? (
-                    <div className="flex justify-center py-4 flex-grow">
-                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 overflow-auto flex-grow">
-                      {searchedProducts.length > 0 ? (
-                        searchedProducts.map((product) => (
-                          <div
-                            key={product.id}
-                            onClick={() => addProductToBill(product)}
-                            className="border rounded p-2 cursor-pointer hover:shadow-md transition-shadow duration-200 bg-white flex flex-col"
-                          >
-                            {(product.imageUrl || product.image) && (
-                              <div className="w-full h-16 mb-1 overflow-hidden rounded">
-                                <img 
-                                  src={product.imageUrl || product.image} 
-                                  alt={product.name} 
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <h3 className="font-medium text-gray-800 text-xs truncate">{product.name}</h3>
-                            <p className="text-emerald-600 font-bold text-xs">₹{product.price.toFixed(2)}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="col-span-full text-center py-8 text-gray-500 text-sm">
-                          {searchQuery ? 
-                            'No products match your search criteria.' : 
-                            'No products found.'}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {activeProductTab === 'order' && (
-                <div className="flex-grow p-2 overflow-auto">
-                  <OrderSummaryComponent 
-                    summary={summary} 
-                    onSummaryChange={handleSummaryChange}
-                    compact={true} // Add compact prop to your component 
-                  />
                 </div>
               )}
             </div>
-          </div>
-          
-          {/* Right Section - Payment & Actions */}
-          <div className="w-1/5 p-2 flex flex-col h-full">
-            <div className="bg-white rounded-lg shadow-sm p-2 mb-1 flex-grow">
-              <h3 className="text-sm font-medium text-gray-800 mb-2">Payment Method</h3>
-              <PaymentMethods 
-                selectedMethod={paymentMethod} 
-                onMethodChange={setPaymentMethod}
-                compact={true} // Add compact prop to your component
-              />
-              
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-800 mb-2">Order Total</h3>
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded-md mb-2">
-                  <span className="text-sm font-medium">Items:</span>
-                  <span className="text-sm">{summary.totalQuantity}</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-gray-50 rounded-md mb-2">
-                  <span className="text-sm font-medium">Subtotal:</span>
-                  <span className="text-sm">₹{summary.subTotal.toFixed(2)}</span>
-                </div>
-                {summary.tax > 0 && (
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded-md mb-2">
-                    <span className="text-sm font-medium">Tax:</span>
-                    <span className="text-sm">₹{summary.tax.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-md">
-                  <span className="text-sm font-bold">Total:</span>
-                  <span className="text-sm font-bold text-emerald-600">₹{summary.grandTotal.toFixed(2)}</span>
-                </div>
-                
-                <div className="mt-4">
-                  <label className="text-xs text-gray-500">Customer Paid</label>
-                  <input
-                    type="number"
-                    value={summary.customerPaid}
-                    onChange={(e) => handleSummaryChange('customerPaid', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1"
-                  />
-                </div>
-                
-                {summary.returnToCustomer > 0 && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded-md text-center">
-                    <span className="text-sm font-medium">Change: ₹{summary.returnToCustomer.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-md p-3 mt-1 flex-shrink-0 border border-gray-200">
-              <ActionButtons 
-                isSaving={isSaving}
-                onSave={onSave}
-                onPrint={async () => {
-                  const invoiceId = await onSave();
-                  if (invoiceId) {
-                    toast.success("Invoice ready for printing");
-                    window.open(`/invoice/${invoiceId}?print=true`, '_blank');
-                  }
-                }}
-                onEmail={async () => {
-                  const invoiceId = await onSave();
-                  if (invoiceId && customerInfo.email) {
-                    toast.success(`Invoice will be emailed to ${customerInfo.email}`);
-                  } else if (!customerInfo.email) {
-                    toast.error("Customer email is required for sending invoice");
-                  }
-                }}
-                onReset={clearOrder}
-                onExit={() => router.push('/dashboard')}
-                onHold={() => {
-                  if (activeTabId) {
-                    handlePauseTab(activeTabId);
-                    // Create a new tab for the next customer
-                    handleCreateTab();
-                  }
-                }}
-                compact={true}
-                billData={{
-                  customerInfo,
-                  billItems,
-                  summary,
-                  orderType,
-                  paymentMethod
-                }}
-              />
-            </div>
+
+            {/* Mobile Menu Button */}
+            <button className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+              <Menu className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </nav>
   );
-}
+};
+
+const ModernBillingUI = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isCustomerFormOpen, setIsCustomerFormOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [invoice, setInvoice] = useState({
+    invoiceNumber: `INV${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
+    date: new Date().toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    terms: 'Net 30',
+    salesRep: 'Sales Representative',
+    customer: {
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      taxId: ''
+    } as Customer,
+    items: [] as InvoiceItem[],
+    discount: 0,
+    delivery: 0,
+  });
+
+  // Initialize user and fetch products on mount
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const user = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email || 'User'
+        };
+        setUser(user);
+        
+        try {
+          await loadProducts();
+        } catch (error) {
+          console.error('Failed to load products:', error);
+        }
+      } else {
+        setUser(null);
+        setProducts([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const loadProducts = async (search: string = '') => {
+    if (!auth.currentUser) {
+      console.warn('No authenticated user found');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const fetchedProducts = await fetchProducts(search);
+      setProducts(fetchedProducts);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication')) {
+          setUser(null);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearch = useCallback(async (term: string) => {
+    setSearchTerm(term);
+    if (term.trim()) {
+      await loadProducts(term);
+    } else {
+      await loadProducts();
+    }
+  }, []);
+
+  const addProductToInvoice = (product: Product) => {
+    const newItem: InvoiceItem = {
+      id: Date.now(),
+      itemCode: product.sku,
+      name: product.name,
+      description: product.description,
+      quantity: 1,
+      price: product.price,
+      taxable: !product.taxIncluded,
+      lineTotal: product.price,
+    };
+    setInvoice(prev => ({
+      ...prev,
+      items: [...prev.items, newItem]
+    }));
+    setIsProductModalOpen(false);
+  };
+
+  const updateItem = (id: number, field: keyof InvoiceItem, value: string | number | boolean) => {
+    setInvoice(prev => ({
+      ...prev,
+      items: prev.items.map(item => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value };
+          if (field === 'quantity' || field === 'price') {
+            updatedItem.lineTotal = updatedItem.quantity * updatedItem.price;
+          }
+          return updatedItem;
+        }
+        return item;
+      })
+    }));
+  };
+
+  const removeItem = (id: number) => {
+    setInvoice(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.id !== id)
+    }));
+  };
+
+  const updateCustomer = (field: keyof Customer, value: string) => {
+    setInvoice(prev => ({
+      ...prev,
+      customer: { ...prev.customer, [field]: value }
+    }));
+  };
+
+  const calculateTotals = () => {
+    const subtotal = invoice.items.reduce((sum, item) => sum + item.lineTotal, 0);
+    const discountAmount = subtotal * (invoice.discount / 100);
+    const taxableAmount = subtotal - discountAmount;
+    const tax = invoice.items.reduce((sum, item) => 
+      item.taxable ? sum + (item.lineTotal * 0.18) : sum, 0
+    );
+    const total = taxableAmount + tax + invoice.delivery;
+    
+    return { subtotal, discount: discountAmount, tax, total };
+  };
+
+  const totals = calculateTotals();
+
+  const addNewItem = () => {
+    const newItem: InvoiceItem = {
+      id: Date.now(),
+      itemCode: '',
+      name: '',
+      description: '',
+      quantity: 1,
+      price: 0,
+      taxable: true,
+      lineTotal: 0,
+    };
+    setInvoice((prev) => ({ ...prev, items: [...prev.items, newItem] }));
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  // Currency formatter for Indian Rupees
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  if (!user) {
+    return (
+      <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-xl text-center max-w-md border dark:border-gray-700">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Calculator className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Authentication Required</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Please sign in to access New Golden Aquazone Billing System.</p>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-lg"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <DarkModeProvider>
+      <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex flex-col transition-colors duration-200">
+        {/* Enhanced Navbar */}
+        <EnhancedNavbar user={user} onSignOut={handleSignOut} />
+
+        {/* Main Content */}
+        <div className="flex-1 flex gap-3 p-3 overflow-hidden">
+          {/* Left Panel - 70% */}
+          <div className="flex-1 flex flex-col gap-3 overflow-hidden">
+            {/* Company & Customer Info */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 h-40 border dark:border-gray-700">
+              <div className="grid grid-cols-2 gap-6 h-full">
+                {/* Bill From */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
+                    <Building className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
+                    Bill From
+                  </h3>
+                  <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">New Golden Aquazone</div>
+                    <div>Premium Aquarium Solutions</div>
+                    <div>Mumbai, Maharashtra, India</div>
+                    <div>+91 98765 43210 | info@newgoldenaquazone.com</div>
+                  </div>
+                </div>
+
+                {/* Bill To */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
+                    <Users className="h-4 w-4 mr-1 text-green-600 dark:text-green-400" />
+                    Bill To
+                    <button 
+                      onClick={() => setIsCustomerFormOpen(true)}
+                      className="ml-auto flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 rounded text-xs transition-colors"
+                    >
+                      <Edit3 className="h-3 w-3 mr-1" />
+                      Edit
+                    </button>
+                  </h3>
+                  <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                      {invoice.customer.name || 'No customer selected'}
+                    </div>
+                    <div>{invoice.customer.email}</div>
+                    <div>{invoice.customer.phone}</div>
+                    <div>{invoice.customer.address && `${invoice.customer.address}, ${invoice.customer.city} ${invoice.customer.state} ${invoice.customer.zipCode}`}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Invoice Details */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 h-24 border dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center">
+                <Calendar className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
+                Invoice Details
+              </h3>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice #</label>
+                  <input
+                    type="text"
+                    value={invoice.invoiceNumber}
+                    onChange={(e) => setInvoice(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                    className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={invoice.date}
+                    onChange={(e) => setInvoice(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={invoice.dueDate}
+                    onChange={(e) => setInvoice(prev => ({ ...prev, dueDate: e.target.value }))}
+                    className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Terms</label>
+                  <select
+                    value={invoice.terms}
+                    onChange={(e) => setInvoice(prev => ({ ...prev, terms: e.target.value }))}
+                    className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  >
+                    <option value="Net 30">Net 30</option>
+                    <option value="Net 15">Net 15</option>
+                    <option value="Due on Receipt">Due on Receipt</option>
+                    <option value="Net 60">Net 60</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Line Items */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-1 flex flex-col overflow-hidden border dark:border-gray-700">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                  <ShoppingCart className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
+                  Items ({invoice.items.length})
+                </h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setIsProductModalOpen(true)}
+                    className="flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs transition-colors"
+                  >
+                    <Package className="h-3 w-3 mr-1" />
+                    Add Product
+                  </button>
+                  <button
+                    onClick={addNewItem}
+                    className="flex items-center px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Custom Item
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-2 py-2 px-2 bg-gray-50 dark:bg-gray-700 rounded text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 flex-shrink-0">
+                <div className="col-span-2">Code</div>
+                <div className="col-span-3">Description</div>
+                <div className="col-span-1 text-center">Qty</div>
+                <div className="col-span-2 text-right">Price</div>
+                <div className="col-span-1 text-center">Tax</div>
+                <div className="col-span-2 text-right">Total</div>
+                <div className="col-span-1"></div>
+              </div>
+
+              {/* Items List */}
+              <div className="flex-1 overflow-y-auto">
+                {invoice.items.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                    <Package className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
+                    <p className="text-sm">No items added yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {invoice.items.map((item) => (
+                      <div key={item.id} className="grid grid-cols-12 gap-2 py-2 px-2 bg-gray-50 dark:bg-gray-700 rounded items-center text-xs">
+                        <div className="col-span-2">
+                          <input
+                            type="text"
+                            value={item.itemCode}
+                            onChange={(e) => updateItem(item.id, 'itemCode', e.target.value)}
+                            className="w-full px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            placeholder="Code"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => updateItem(item.id, 'name', e.target.value)}
+                            className="w-full px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded mb-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            placeholder="Item name"
+                          />
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                            className="w-full px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            placeholder="Description"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                            className="w-full px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            min="0"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="number"
+                            value={item.price}
+                            onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                            className="w-full px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-right bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={item.taxable}
+                            onChange={(e) => updateItem(item.id, 'taxable', e.target.checked)}
+                            className="h-3 w-3 text-blue-600"
+                          />
+                        </div>
+                        <div className="col-span-2 text-right font-semibold text-gray-900 dark:text-gray-100">
+                          {formatCurrency(item.lineTotal)}
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - 30% */}
+          <div className="w-80 flex flex-col gap-3 overflow-hidden">
+            {/* Invoice Summary */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center">
+                <Calculator className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
+                Summary
+              </h3>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(totals.subtotal)}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Discount</span>
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      value={invoice.discount}
+                      onChange={(e) => setInvoice(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
+                      className="w-12 px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded mr-1 text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
+                    <span className="text-xs text-gray-600 dark:text-gray-400">%</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Delivery</span>
+                  <input
+                    type="number"
+                    value={invoice.delivery}
+                    onChange={(e) => setInvoice(prev => ({ ...prev, delivery: parseFloat(e.target.value) || 0 }))}
+                    className="w-16 px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">GST (18%)</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(totals.tax)}</span>
+                </div>
+                
+                <div className="flex justify-between py-2 border-t border-gray-200 dark:border-gray-600">
+                  <span className="font-bold text-gray-900 dark:text-gray-100">Total</span>
+                  <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{formatCurrency(totals.total)}</span>
+                </div>
+              </div>
+              
+              <button className="w-full mt-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
+                Mark as PAID
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-1 border dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Quick Actions</h3>
+              <div className="space-y-2">
+                <button className="w-full flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">
+                  <Printer className="h-4 w-4 mr-1" />
+                  Print Invoice
+                </button>
+                <button className="w-full flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
+                  <Send className="h-4 w-4 mr-1" />
+                  Send Email
+                </button>
+                <button className="w-full flex items-center justify-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors">
+                  <Save className="h-4 w-4 mr-1" />
+                  Save as PDF
+                </button>
+              </div>
+
+              </div></div>
+        </div>
+
+        {/* Customer Form Modal */}
+        {isCustomerFormOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto border dark:border-gray-700">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-600">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Customer Information</h3>
+                <button
+                  onClick={() => setIsCustomerFormOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer Name *</label>
+                    <input
+                      type="text"
+                      value={invoice.customer.name}
+                      onChange={(e) => updateCustomer('name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="Enter customer name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      value={invoice.customer.email}
+                      onChange={(e) => updateCustomer('email', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="customer@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={invoice.customer.phone}
+                      onChange={(e) => updateCustomer('phone', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number</label>
+                    <input
+                      type="text"
+                      value={invoice.customer.taxId}
+                      onChange={(e) => updateCustomer('taxId', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="GST registration number"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street Address</label>
+                    <input
+                      type="text"
+                      value={invoice.customer.address}
+                      onChange={(e) => updateCustomer('address', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="Enter street address"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City</label>
+                    <input
+                      type="text"
+                      value={invoice.customer.city}
+                      onChange={(e) => updateCustomer('city', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="City"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
+                    <input
+                      type="text"
+                      value={invoice.customer.state}
+                      onChange={(e) => updateCustomer('state', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="State"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIN Code</label>
+                    <input
+                      type="text"
+                      value={invoice.customer.zipCode}
+                      onChange={(e) => updateCustomer('zipCode', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="400001"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
+                <button
+                  onClick={() => setIsCustomerFormOpen(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setIsCustomerFormOpen(false)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Save Customer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Product Selection Modal */}
+        {isProductModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl mx-4 h-[80vh] flex flex-col border dark:border-gray-700">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Select Products</h3>
+                <button
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="p-4 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div className="relative">
+                  <Search className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search products by name, SKU, or category..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">Loading products...</span>
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-40 text-gray-500 dark:text-gray-400">
+                    <Package className="h-12 w-12 mb-2 text-gray-300 dark:text-gray-600" />
+                    <p className="text-lg font-medium">No products found</p>
+                    <p className="text-sm">Try adjusting your search terms</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products.map((product) => (
+                      <div
+                        key={product.id}
+                        className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-700"
+                        onClick={() => addProductToInvoice(product)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-sm">{product.name}</h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{product.description}</p>
+                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                              <span>SKU: {product.sku}</span>
+                              <span className={`px-2 py-1 rounded-full ${
+                                product.stock > 10 
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                                  : product.stock > 0 
+                                  ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' 
+                                  : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                              }`}>
+                                {product.stock}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(product.price)}</span>
+                          <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors">
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3 flex-shrink-0">
+                <button
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => loadProducts()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </DarkModeProvider>
+  );
+};
+
+export default ModernBillingUI;
