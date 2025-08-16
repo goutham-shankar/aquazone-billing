@@ -95,11 +95,9 @@ const InvoicePDF = ({ invoice, totals, formatCurrency }) => (
       <View style={pdfStyles.header}>
         <View>
           <Text style={pdfStyles.companyName}>New Golden Aquazone</Text>
-          {/* --- MODIFIED --- Dynamically set the title */}
           <Text style={pdfStyles.invoiceTitle}>{invoice.billType === 'Invoice' ? 'TAX INVOICE' : 'QUOTATION'}</Text>
         </View>
         <View style={{ textAlign: 'right' }}>
-          {/* --- MODIFIED --- Dynamically set the label */}
           <Text>{invoice.billType === 'Invoice' ? 'Invoice' : 'Quotation'} #: {invoice.invoiceNumber}</Text>
           <Text>Date: {new Date(invoice.date).toLocaleDateString('en-IN')}</Text>
           <Text>Due Date: {new Date(invoice.dueDate).toLocaleDateString('en-IN')}</Text>
@@ -185,7 +183,6 @@ type Product = { id: number | string; name: string; description: string; price: 
 type InvoiceItem = { id: number; itemCode: string; name: string; description: string; quantity: number; price: number; taxable: boolean; lineTotal: number; };
 type Customer = { name: string; email: string; phone: string; address: string; city: string; state: string; zipCode: string; taxId: string; };
 type User = { uid: string; email: string; displayName: string; };
-// --- MODIFIED --- Added billType to the invoice object in the Terminal type
 type Terminal = { id: string; name: string; invoice: { billType: 'Invoice' | 'Quotation'; invoiceNumber: string; date: string; dueDate: string; terms: string; salesRep: string; customer: Customer; items: InvoiceItem[]; discount: number; delivery: number; }; createdAt: Date; lastActivity: Date; };
 
 // --- AUTH AND DATA FETCHING ---
@@ -283,7 +280,6 @@ const TerminalProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeTerminalId, setActiveTerminalId] = useState('');
 
   const createNewInvoice = () => ({
-    // --- ADDED --- Set default bill type
     billType: 'Invoice' as 'Invoice' | 'Quotation',
     invoiceNumber: `INV${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
     date: new Date().toISOString().split('T')[0],
@@ -638,9 +634,7 @@ const ModernBillingUI = () => {
 
           <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center"><Calendar className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />Invoice Details</h3>
-            {/* --- MODIFIED --- Changed grid layout to accommodate the new field */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {/* --- NEW SECTION --- Dropdown for selecting bill type */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
                 <select value={invoice.billType} onChange={(e) => updateInvoice({ billType: e.target.value })} className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
@@ -648,7 +642,6 @@ const ModernBillingUI = () => {
                   <option value="Quotation">Quotation</option>
                 </select>
               </div>
-              {/* --- END NEW SECTION --- */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{invoice.billType} #</label>
                 <input type="text" value={invoice.invoiceNumber} onChange={(e) => updateInvoice({ invoiceNumber: e.target.value })} className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
