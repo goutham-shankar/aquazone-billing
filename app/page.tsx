@@ -7,6 +7,66 @@ import { PDFDownloadLink, Page, Text, View, Document, StyleSheet } from '@react-
 import { auth } from './lib/firebase'; // Add your Firebase config path
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 
+// Import the CustomerForm component
+import CustomerFormModal, { type Customer } from './components/CustomerForm';
+
+// --- TYPES ---
+type Product = { id: number | string; name: string; description: string; price: number; category: string; stock: number; image: string; sku: string; barcode: string; pluCode: string; taxRate: number; taxIncluded: boolean; wholesalePrice?: number; retailPrice?: number; subCategory?: string; };
+type InvoiceItem = { id: number; itemCode: string; name: string; description: string; quantity: number; price: number; taxable: boolean; lineTotal: number; };
+type User = { uid: string; email: string; displayName: string; };
+type Terminal = { id: string; name: string; invoice: { billType: 'Invoice' | 'Quotation'; invoiceNumber: string; date: string; dueDate: string; terms: string; salesRep: string; customer: Customer; items: InvoiceItem[]; discount: number; delivery: number; }; createdAt: Date; lastActivity: Date; };
+
+// --- BILL TO SECTION COMPONENT ---
+interface BillToSectionProps {
+  customer: Customer;
+  onEditCustomer: () => void;
+}
+
+const BillToSection: React.FC<BillToSectionProps> = ({ customer, onEditCustomer }) => {
+  return (
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+          <User className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
+          Bill To
+        </h3>
+        <button 
+          onClick={onEditCustomer} 
+          className="flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          <Edit3 className="h-3 w-3 mr-1" />
+          {customer.name ? 'Edit' : 'Add Customer'}
+        </button>
+      </div>
+      
+      {customer.name ? (
+        <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+          <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{customer.name}</p>
+          {customer.email && <p>{customer.email}</p>}
+          {customer.phone && <p>{customer.phone}</p>}
+          {customer.address && (
+            <p>
+              {customer.address}, {customer.city} {customer.state} {customer.zipCode}
+            </p>
+          )}
+          {customer.taxId && (
+            <p className="font-mono text-xs pt-1">GSTIN: {customer.taxId}</p>
+          )}
+        </div>
+      ) : (
+        <div 
+          onClick={onEditCustomer} 
+          className="flex items-center justify-center h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+        >
+          <div className="text-center text-gray-500 dark:text-gray-400">
+            <Plus className="h-5 w-5 mx-auto mb-1" />
+            <p className="text-sm font-medium">Add Customer</p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
 
 // --- PDF Document Component ---
 const pdfStyles = StyleSheet.create({
@@ -160,9 +220,7 @@ const InvoicePDF = ({ invoice, totals, formatCurrency }) => (
   </Document>
 );
 
-
-// --- CONTEXT AND TYPES ---
-
+// --- CONTEXT AND PROVIDERS ---
 const DarkModeContext = createContext({
   isDarkMode: false,
   toggleDarkMode: () => { }
@@ -179,14 +237,7 @@ const TerminalContext = createContext({
 });
 const useTerminals = () => useContext(TerminalContext);
 
-type Product = { id: number | string; name: string; description: string; price: number; category: string; stock: number; image: string; sku: string; barcode: string; pluCode: string; taxRate: number; taxIncluded: boolean; wholesalePrice?: number; retailPrice?: number; subCategory?: string; };
-type InvoiceItem = { id: number; itemCode: string; name: string; description: string; quantity: number; price: number; taxable: boolean; lineTotal: number; };
-type Customer = { name: string; email: string; phone: string; address: string; city: string; state: string; zipCode: string; taxId: string; };
-type User = { uid: string; email: string; displayName: string; };
-type Terminal = { id: string; name: string; invoice: { billType: 'Invoice' | 'Quotation'; invoiceNumber: string; date: string; dueDate: string; terms: string; salesRep: string; customer: Customer; items: InvoiceItem[]; discount: number; delivery: number; }; createdAt: Date; lastActivity: Date; };
-
 // --- AUTH AND DATA FETCHING ---
-
 const signOut = async () => {
   try {
     await firebaseSignOut(auth);
@@ -257,7 +308,6 @@ const fetchProducts = async (searchTerm: string = ''): Promise<Product[]> => {
 };
 
 // --- PROVIDER COMPONENTS ---
-
 const DarkModeProvider = ({ children }: { children: React.ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   useEffect(() => {
@@ -348,9 +398,7 @@ const TerminalProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-
 // --- UI COMPONENTS ---
-
 const TerminalTabs = () => {
   const { terminals, activeTerminalId, addTerminal, removeTerminal, setActiveTerminal } = useTerminals();
   return (
@@ -612,25 +660,11 @@ const ModernBillingUI = () => {
       <main className="flex-1 flex gap-3 p-3 overflow-hidden">
         {/* Left Panel */}
         <div className="flex-1 flex flex-col gap-3 overflow-hidden">
-          <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center"><User className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />Bill To</h3>
-              <button onClick={() => setIsCustomerFormOpen(true)} className="flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"><Edit3 className="h-3 w-3 mr-1" />{invoice.customer.name ? 'Edit' : 'Add Customer'}</button>
-            </div>
-            {invoice.customer.name ? (
-              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{invoice.customer.name}</p>
-                {invoice.customer.email && <p>{invoice.customer.email}</p>}
-                {invoice.customer.phone && <p>{invoice.customer.phone}</p>}
-                {invoice.customer.address && <p>{invoice.customer.address}, {invoice.customer.city} {invoice.customer.state} {invoice.customer.zipCode}</p>}
-                {invoice.customer.taxId && <p className="font-mono text-xs pt-1">GSTIN: {invoice.customer.taxId}</p>}
-              </div>
-            ) : (
-              <div onClick={() => setIsCustomerFormOpen(true)} className="flex items-center justify-center h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <div className="text-center text-gray-500 dark:text-gray-400"><Plus className="h-5 w-5 mx-auto mb-1" /><p className="text-sm font-medium">Add Customer</p></div>
-              </div>
-            )}
-          </section>
+          {/* Bill To Section - Now using the separate component */}
+          <BillToSection 
+            customer={invoice.customer} 
+            onEditCustomer={() => setIsCustomerFormOpen(true)} 
+          />
 
           <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 flex-shrink-0 border dark:border-gray-700">
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center"><Calendar className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />Invoice Details</h3>
@@ -729,34 +763,19 @@ const ModernBillingUI = () => {
         </aside>
       </main>
 
-      {/* Modals */}
-      {isCustomerFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto border dark:border-gray-700">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-600">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Customer Information</h3>
-              <button onClick={() => setIsCustomerFormOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer Name *</label><input type="text" value={invoice.customer.name} onChange={(e) => updateCustomer('name', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Enter customer name" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label><input type="email" value={invoice.customer.email} onChange={(e) => updateCustomer('email', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="customer@example.com" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label><input type="tel" value={invoice.customer.phone} onChange={(e) => updateCustomer('phone', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="+91 98765 43210" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Number</label><input type="text" value={invoice.customer.taxId} onChange={(e) => updateCustomer('taxId', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="GST registration number" /></div>
-                <div className="col-span-1 md:col-span-2"><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Street Address</label><input type="text" value={invoice.customer.address} onChange={(e) => updateCustomer('address', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Enter street address" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City</label><input type="text" value={invoice.customer.city} onChange={(e) => updateCustomer('city', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="City" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label><input type="text" value={invoice.customer.state} onChange={(e) => updateCustomer('state', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="State" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIN Code</label><input type="text" value={invoice.customer.zipCode} onChange={(e) => updateCustomer('zipCode', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="400001" /></div>
-              </div>
-            </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 flex justify-end space-x-3">
-              <button onClick={() => setIsCustomerFormOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors">Cancel</button>
-              <button onClick={() => setIsCustomerFormOpen(false)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">Save Customer</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Customer Form Modal - Using the enhanced separate component */}
+      <CustomerFormModal
+        isOpen={isCustomerFormOpen}
+        customer={invoice.customer}
+        onClose={() => setIsCustomerFormOpen(false)}
+        onUpdateCustomer={updateCustomer}
+        onSave={() => {
+          console.log('Customer saved:', invoice.customer);
+          // Add any additional save logic here if needed
+        }}
+      />
 
+      {/* Product Modal */}
       {isProductModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl mx-4 h-[80vh] flex flex-col border dark:border-gray-700">
