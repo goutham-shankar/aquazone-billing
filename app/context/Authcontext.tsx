@@ -19,6 +19,7 @@ type AuthContextType = {
   getIdToken: () => Promise<string | null>;
   loading: boolean;
   error: string | null;
+  userId: string | null; // exposed firebase uid for salesman field
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, signInWithGoogle, logout, getIdToken, loading, error }}
+      value={{ user, signInWithGoogle, logout, getIdToken, loading, error, userId: user?.uid || null }}
     >
       {children}
     </AuthContext.Provider>
