@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const idToken = await result.user.getIdToken();
 
       // Validate user with your API
-      const validateResponse = await fetch(`https://x2zlcvi4af.execute-api.ap-south-1.amazonaws.com/dev/user/validate`, {
+      const validateResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/validate?src=billing`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -65,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // User not validated, sign them out and show error
         await signOut(auth);
         setUser(null);
-        setError("User not validated. Please contact an administrator.");
         toast.error("User not validated. Please contact an administrator.");
         return;
       } else {
