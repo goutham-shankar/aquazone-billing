@@ -10,7 +10,7 @@ A modern, feature-rich Point of Sale (POS) system built with Next.js, featuring 
 - **Professional Branding**: Enhanced AquaZone branding with modern aesthetics
 
 ### 📱 **Multi-Tab Billing System**
-- **Concurrent Customers**: Handle multiple customers simultaneously in separate tabs
+- **Concurrent Customers**: Han.    dle multiple customers simultaneously in separate tabs
 - **Smart Tab Management**: Visual status indicators (new, active, paused)
 - **Pause & Resume**: Pause current orders to serve new customers
 - **Tab Overview**: Summary bar showing total orders and revenue across all tabs
