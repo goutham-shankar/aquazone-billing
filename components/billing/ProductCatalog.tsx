@@ -49,7 +49,7 @@ export default function ProductCatalog({ className, onAdd, cartItems = [] }: Pro
     try {
       const response = await api.categories.list();
       if (response.success && response.data) {
-        setCategories(response.data.items || []);
+        setCategories(response.data || []);
       } else {
         console.error("Failed to load categories:", (response as any).error);
         toast.error("Failed to load categories");
@@ -74,8 +74,8 @@ export default function ProductCatalog({ className, onAdd, cartItems = [] }: Pro
       }
 
       const response = await api.products.list(params);
-      if (response.success && response.data) {
-        setProducts(response.data.products || []);
+      if (response.success && response.products) {
+        setProducts(response.products || []);
       } else {
         console.error("Failed to load products:", (response as any).error);
         toast.error("Failed to load products");

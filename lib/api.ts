@@ -12,6 +12,7 @@ export type ApiResult<T> = {
     total: number;
     limit: number;
   };
+  [key: string]: any;
 } | { 
   success: false; 
   error: string; 
