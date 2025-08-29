@@ -13,7 +13,7 @@ export function ThemeToggle() {
     setMounted(true)
   }, [])
 
-  if (!mounted) return <button className="p-2 rounded-md bg-gray-200 text-gray-500">...</button>
+  if (!mounted) return <button className="p-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">...</button>
 
   const isDark = resolvedTheme === "dark"
 

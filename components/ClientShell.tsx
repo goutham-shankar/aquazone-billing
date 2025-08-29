@@ -56,22 +56,22 @@ export default function ClientShell({ children }: { children: React.ReactNode })
           position="top-right"
           toastOptions={{
             style: {
-              background: "rgba(30, 30, 30, 0.9)",
-              color: "#fff",
+              background: "var(--popover)",
+              color: "var(--popover-foreground)",
               backdropFilter: "blur(8px)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
+              border: "1px solid var(--border)",
               borderRadius: "8px",
             },
             success: {
               iconTheme: {
                 primary: "#4ade80",
-                secondary: "#333",
+                secondary: "var(--popover)",
               },
             },
             error: {
               iconTheme: {
                 primary: "#ef4444",
-                secondary: "#333",
+                secondary: "var(--popover)",
               },
             },
           }}

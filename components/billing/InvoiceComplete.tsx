@@ -121,20 +121,20 @@ export default function InvoiceComplete({
   };
 
   return (
-    <div className={`min-h-screen bg-slate-50 ${className}`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-gray-900 ${className}`}>
       {/* Header Actions */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 print:hidden">
+      <div className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-6 py-4 print:hidden">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-gray-300 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
-            <div className="h-6 w-px bg-slate-300" />
-            <div className="flex items-center gap-2 text-green-600">
+            <div className="h-6 w-px bg-slate-300 dark:bg-gray-600" />
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium">Invoice Created Successfully</span>
             </div>
@@ -143,7 +143,7 @@ export default function InvoiceComplete({
           <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
             >
               <Printer className="w-4 h-4" />
               Print
@@ -151,14 +151,14 @@ export default function InvoiceComplete({
             <button
               onClick={handleDownloadPDF}
               disabled={isGeneratingPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
             >
               <Download className="w-4 h-4" />
               {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
             </button>
             <button
               onClick={onNewBill}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
               New Bill
@@ -172,10 +172,10 @@ export default function InvoiceComplete({
         <div className="max-w-4xl mx-auto px-6 print:px-0">
           <div 
             ref={invoiceRef}
-            className="bg-white rounded-lg shadow-lg print:shadow-none print:rounded-none"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg print:shadow-none print:rounded-none"
           >
             {/* Invoice Header */}
-            <div className="border-b border-slate-200 px-8 py-6">
+            <div className="border-b border-slate-200 dark:border-gray-700 px-8 py-6">
               <div className="flex justify-between items-start">
                 <div>
                   <h1 className="text-3xl font-bold text-slate-800">INVOICE</h1>
@@ -283,8 +283,8 @@ export default function InvoiceComplete({
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-6 bg-slate-50 rounded-b-lg print:bg-transparent">
-              <div className="text-center text-sm text-slate-600">
+            <div className="px-8 py-6 bg-slate-50 dark:bg-gray-750 rounded-b-lg print:bg-transparent">
+              <div className="text-center text-sm text-slate-600 dark:text-gray-400">
                 <p>Thank you for your business!</p>
                 <p className="mt-1">For any queries, please contact us at info@aquazone.com</p>
               </div>

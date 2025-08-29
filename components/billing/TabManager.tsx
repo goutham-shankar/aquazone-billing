@@ -17,7 +17,7 @@ interface TabManagerProps {
 
 export default function TabManager({ tabs, activeId, onSelect, onNew, onClose }: TabManagerProps) {
   return (
-    <div className="flex h-16 items-center gap-1 bg-white/80 border border-slate-200 rounded-lg p-1">
+    <div className="flex h-16 items-center gap-1 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg p-1">
       {tabs.map((tab) => (
         <div
           key={tab.id}
@@ -25,7 +25,7 @@ export default function TabManager({ tabs, activeId, onSelect, onNew, onClose }:
             flex items-center gap-2 px-3 py-1.5 rounded text-sm cursor-pointer transition-colors
             ${tab.id === activeId 
               ? "bg-sky-600 text-white" 
-              : "hover:bg-slate-100 text-slate-700"
+              : "hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200"
             }
           `}
           onClick={() => onSelect(tab.id)}
@@ -40,7 +40,7 @@ export default function TabManager({ tabs, activeId, onSelect, onNew, onClose }:
                 e.stopPropagation();
                 onClose(tab.id);
               }}
-              className="p-0.5 hover:bg-black/10 rounded transition-colors"
+              className="p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
             >
               <X className="w-3 h-3" />
             </button>
@@ -49,7 +49,7 @@ export default function TabManager({ tabs, activeId, onSelect, onNew, onClose }:
       ))}
       <button
         onClick={onNew}
-        className="flex items-center gap-1 px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded transition-colors"
+        className="flex items-center gap-1 px-2 py-1.5 text-sm text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
       >
         <Plus className="w-3 h-3" />
         New
