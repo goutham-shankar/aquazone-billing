@@ -19,6 +19,26 @@
   --ring: #0ea5e9;
 }
 
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --input: #1e293b;
+  --primary: #0ea5e9;
+  --primary-foreground: #0f172a;
+  --secondary: #1e293b;
+  --secondary-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #94a3b8;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --ring: #0ea5e9;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+}
+
 /* Remove automatic dark mode to ensure consistent theming */
 body {
   background: var(--background);
@@ -293,3 +313,132 @@ select:disabled {
     transform: translateY(0);
   }
 }
+
+/* Dark-mode overrides for common Tailwind utility classes.
+   This maps the project's commonly-used utility classes to the
+   CSS variables defined above so components authored with
+   `bg-white`, `text-gray-900`, etc. adapt automatically when
+   the `.dark` class is present on the document root. */
+.dark .bg-white {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+.dark .bg-white\/80 {
+  background-color: rgba(30,41,59,0.8) !important; /* semi-transparent popover */
+  color: var(--popover-foreground, var(--foreground)) !important;
+}
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-slate-100 {
+  border-color: var(--border) !important;
+}
+.dark .bg-slate-50 {
+  background-color: var(--muted) !important;
+}
+
+/* Additional mappings to cover common utilities used across components */
+.dark .bg-white {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+.dark .bg-white\/80 {
+  background-color: rgba(30,41,59,0.85) !important;
+}
+.dark .bg-gray-50 {
+  background-color: var(--muted) !important;
+}
+.dark .bg-gray-100 {
+  background-color: #0b1220 !important;
+}
+.dark .bg-gray-200 {
+  background-color: #111827 !important;
+}
+.dark .bg-sky-600,
+.dark .bg-sky-500,
+.dark .bg-blue-600,
+.dark .bg-blue-500 {
+  /* keep primary colors consistent */
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+.dark .text-gray-900,
+.dark .text-slate-800 {
+  color: var(--foreground) !important;
+}
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: var(--muted-foreground) !important;
+}
+.dark .text-gray-400,
+.dark .text-slate-300 {
+  color: #9ca3af !important;
+}
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-slate-50:hover {
+  background-color: rgba(255,255,255,0.02) !important;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+.dark .text-blue-600,
+.dark .text-green-600,
+.dark .text-red-600,
+.dark .text-blue-700 {
+  color: currentColor !important;
+}
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: var(--border) !important;
+}
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: var(--input) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: var(--muted) !important;
+}
+.dark .bg-gray-100 {
+  background-color: var(--muted) !important;
+}
+.dark .bg-gray-200 {
+  background-color: #1f2937 !important;
+}
+.dark .text-gray-900 {
+  color: var(--foreground) !important;
+}
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: var(--muted-foreground) !important;
+}
+.dark .text-gray-400 {
+  color: #9ca3af !important;
+}
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-100 {
+  border-color: var(--border) !important;
+}
+.dark .hover\:bg-gray-50:hover {
+  background-color: rgba(255,255,255,0.02) !important;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+.dark .google-signin-btn {
+  background-color: var(--input) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+.dark .loading-spinner {
+  border-top-color: #cbd5e1 !important;
+}
+
