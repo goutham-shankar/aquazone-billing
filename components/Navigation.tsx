@@ -1,7 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import { 
   Calculator, 
@@ -24,64 +23,91 @@ const navigation = [
 export default function Navigation() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const NavItem = ({ item }: { item: { name: string; href: string; icon: React.ComponentType<{ className?: string }> } }) => {
+    const isActive = pathname === item.href;
+    const Icon = item.icon;
+    
+    return (
+      <div className="relative group">
+        <Link
+          href={item.href}
+          className={`
+            flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors
+            ${isActive
+              ? "bg-[var(--secondary)] text-[var(--secondary-foreground)]"
+              : "text-[var(--muted-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--secondary-foreground)]"
+            }
+            ${isCollapsed && "justify-center px-2"}
+          `}
+        >
+          <Icon className={`h-4 w-4 ${!isCollapsed && "mr-3"}`} />
+          {!isCollapsed && <span>{item.name}</span>}
+        </Link>
+        {isCollapsed && (
+          <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--foreground)] text-[var(--background)] text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+            {item.name}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <nav className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out`}>
-      <div className={`${isCollapsed ? 'p-2' : 'p-4'} border-b border-gray-200`}>
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <h2 className="text-base font-semibold text-gray-900">Enterprise Billing</h2>
-          )}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+    <>
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-[var(--background)] rounded-md shadow-md border border-[var(--border)]"
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        aria-label="Toggle sidebar"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+      <div
+        className={`
+          fixed inset-y-0 z-20 flex flex-col bg-[var(--background)] transition-all duration-300 ease-in-out lg:static border-r border-[var(--border)]
+          ${isCollapsed ? "w-[72px]" : "w-72"}
+          ${isMobileOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+          }
+        `}
+      >
+        <div className="border-b border-[var(--border)]">
+          <div
+            className={`
+              flex h-16 items-center gap-2 px-4
+              ${isCollapsed && "justify-center px-2"}
+            `}
           >
-            {isCollapsed ? (
-              <Menu className="w-4 h-4 text-gray-600" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            {!isCollapsed && (
+              <Link href="/" className="flex items-center font-semibold">
+                <span className="text-lg">AquaZone Billing</span>
+              </Link>
             )}
-          </button>
+            <button
+              className={`ml-auto h-8 w-8 p-1 rounded-md hover:bg-[var(--muted)] transition-colors ${isCollapsed && "ml-0"}`}
+              onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+              <ChevronLeft
+                className={`h-4 w-4 transition-transform ${
+                  isCollapsed && "rotate-180"
+                }`}
+              />
+              <span className="sr-only">
+                {isCollapsed ? "Expand" : "Collapse"} Sidebar
+              </span>
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <nav className="flex-1 space-y-1 px-2 py-4">
+            {navigation.map((item) => (
+              <NavItem key={item.name} item={item} />
+            ))}
+          </nav>
         </div>
       </div>
-
-      <div className="flex-1 px-2 py-3">
-        <ul className="space-y-0.5">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={`
-                    group flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium rounded-md transition-colors relative
-                    ${isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                    }
-                  `}
-                  title={isCollapsed ? item.name : undefined}
-                >
-                  <Icon 
-                    className={`w-4 h-4 flex-shrink-0 ${
-                      isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"
-                    }`} 
-                  />
-                  {!isCollapsed && (
-                    <span className="truncate">{item.name}</span>
-                  )}
-                  {isCollapsed && isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-r-full" />
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </nav>
+    </>
   );
 }
