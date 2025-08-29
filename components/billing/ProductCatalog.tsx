@@ -25,7 +25,7 @@ interface Category {
 
 interface ProductCatalogProps {
   className?: string;
-  onAdd: (product: { id: string; name: string; price?: number }) => void;
+  onAdd: (product: { id: string; name: string; price?: number; stock?: number }) => void;
   cartItems?: Array<{ id: string; qty: number }>;
 }
 
@@ -74,8 +74,8 @@ export default function ProductCatalog({ className, onAdd, cartItems = [] }: Pro
       }
 
       const response = await api.products.list(params);
-      if (response.success && response.products) {
-        setProducts(response.products || []);
+      if (response.success && response.data) {
+        setProducts(response.data.products || []);
       } else {
         console.error("Failed to load products:", (response as any).error);
         toast.error("Failed to load products");
@@ -96,16 +96,29 @@ export default function ProductCatalog({ className, onAdd, cartItems = [] }: Pro
   };
 
   const handleAddProduct = (product: Product) => {
+    const qtyInCart = getProductQuantityInCart(product._id);
+    
+    if (product.stock <= 0) {
+      toast.error('This product is out of stock');
+      return;
+    }
+    
+    if (qtyInCart >= product.stock) {
+      toast.error('Cannot add more items. All available stock is already in cart.');
+      return;
+    }
+    
     const price = product.retailPrice || product.price || product.wholesalePrice || 0;
     onAdd({
       id: product._id,
       name: product.name,
-      price: price
+      price: price,
+      stock: product.stock
     });
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product => product.stock > 0);
+    return products; // Show all products, including out of stock ones
   }, [products]);
 
   return (
@@ -191,16 +204,23 @@ export default function ProductCatalog({ className, onAdd, cartItems = [] }: Pro
                   
                   <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
                     <span>₹{price}</span>
-                    <span>Stock: {product.stock}</span>
+                    <span className={product.stock <= 0 ? 'text-red-600 font-medium' : ''}>
+                      {product.stock <= 0 ? 'OUT OF STOCK' : `Stock: ${product.stock}`}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAddProduct(product)}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-sky-600 text-white rounded text-xs hover:bg-sky-700 transition-colors"
+                      disabled={product.stock <= 0 || qtyInCart >= product.stock}
+                      className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-xs transition-colors ${
+                        product.stock <= 0 || qtyInCart >= product.stock
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-sky-600 text-white hover:bg-sky-700'
+                      }`}
                     >
                       <Plus className="w-3 h-3" />
-                      Add
+                      {product.stock <= 0 || qtyInCart >= product.stock ? 'OUT OF STOCK' : 'Add'}
                     </button>
                     {qtyInCart > 0 && (
                       <div className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">

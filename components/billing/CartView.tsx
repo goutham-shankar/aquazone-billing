@@ -6,6 +6,7 @@ interface CartItem {
   name: string;
   price: number;
   qty: number;
+  stock: number;
 }
 
 interface CartViewProps {
@@ -59,7 +60,12 @@ export default function CartView({ className, items, onInc, onDec, onRemove }: C
                   
                   <button
                     onClick={() => onInc(item.id)}
-                    className="w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+                    disabled={item.qty >= item.stock}
+                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+                      item.qty >= item.stock
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-slate-100 hover:bg-slate-200'
+                    }`}
                   >
                     <Plus className="w-4 h-4" />
                   </button>

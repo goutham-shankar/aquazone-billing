@@ -9,6 +9,7 @@ import CartView from "../components/billing/CartView";
 import DiscountDialog from "../components/billing/DiscountDialog";
 import InvoicePreview from "../components/billing/InvoicePreview";
 import PaymentSection from "../components/billing/PaymentSection";
+import InvoiceComplete from "../components/billing/InvoiceComplete";
 import { api } from "@/lib/api";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -113,7 +114,7 @@ export default function BillingWorkspace() {
       zip?: string;
     };
   };
-  type CartItem = { id: string; name: string; price: number; qty: number };
+  type CartItem = { id: string; name: string; price: number; qty: number; stock: number };
   type BillingState = {
     customer?: Customer;
     items: CartItem[];
@@ -121,6 +122,7 @@ export default function BillingWorkspace() {
     taxPercent: number;
     stage: BillingStage;
     invoiceId?: string;
+    invoiceNumber?: string;
   };
 
   const [byTab, setByTab] = useState<Record<string, BillingState>>({});
@@ -135,7 +137,7 @@ export default function BillingWorkspace() {
           next[t.id] = {
             items: [],
             discountAmount: 0,
-            taxPercent: 0,
+            taxPercent: 18,
             stage: "products",
           };
         }
@@ -151,7 +153,7 @@ export default function BillingWorkspace() {
   const state = byTab[activeId] ?? {
     items: [],
     discountAmount: 0,
-    taxPercent: 0,
+    taxPercent: 18,
     stage: "products" as BillingStage,
   };
 
@@ -171,21 +173,37 @@ export default function BillingWorkspace() {
   );
 
   const addProduct = useCallback(
-    (p: { id: string; name: string; price?: number }) => {
+    (p: { id: string; name: string; price?: number; stock?: number }) => {
       const price = Number(p.price ?? 0);
+      const stock = Number(p.stock ?? 0);
+      
       if (!p.id || !p.name) return;
+      
+      if (stock <= 0) {
+        toast.error('This product is out of stock');
+        return;
+      }
+      
       setByTab((prev) => {
         const cur = prev[activeId] ?? {
           items: [],
           discountAmount: 0,
-          taxPercent: 0,
+          taxPercent: 18,
           stage: "products" as BillingStage,
         };
         const existing = cur.items.find((i) => i.id === p.id);
-        const items = existing
-          ? cur.items.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i))
-          : [...cur.items, { id: p.id, name: p.name, price, qty: 1 }];
-        return { ...prev, [activeId]: { ...cur, items } };
+        
+        if (existing) {
+          if (existing.qty >= stock) {
+            toast.error('Cannot add more items. Maximum available quantity reached.');
+            return prev;
+          }
+          const items = cur.items.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i));
+          return { ...prev, [activeId]: { ...cur, items } };
+        } else {
+          const items = [...cur.items, { id: p.id, name: p.name, price, qty: 1, stock }];
+          return { ...prev, [activeId]: { ...cur, items } };
+        }
       });
     },
     [activeId]
@@ -209,9 +227,18 @@ export default function BillingWorkspace() {
       setByTab((prev) => {
         const cur = prev[activeId];
         if (!cur) return prev;
-        const items = cur.items.map((i) =>
-          i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i
-        );
+        const items = cur.items.map((i) => {
+          if (i.id === id) {
+            const newQty = i.qty + delta;
+            if (newQty < 1) return { ...i, qty: 1 };
+            if (newQty > i.stock) {
+              toast.error('Cannot add more items. Maximum available quantity reached.');
+              return i;
+            }
+            return { ...i, qty: newQty };
+          }
+          return i;
+        });
         return { ...prev, [activeId]: { ...cur, items } };
       }),
     [activeId]
@@ -386,6 +413,7 @@ export default function BillingWorkspace() {
       setState({
         stage: "payment",
         invoiceId: res.data._id,
+        invoiceNumber: res.data.invoiceNumber || res.data.number || `INV-${Date.now()}`,
       });
     } catch (e: any) {
       toast.error(e?.message || "Invoice creation failed");
@@ -402,19 +430,28 @@ export default function BillingWorkspace() {
 
   const handlePaymentComplete = useCallback(() => {
     toast.success("Payment completed successfully");
-    // Reset tab state
+    setState({ stage: "complete" });
+  }, [setState]);
+
+  const handleBackFromComplete = useCallback(() => {
+    setState({ stage: "payment" });
+  }, [setState]);
+
+  const handleNewBill = useCallback(() => {
+    // Reset current tab to new bill state
     setByTab((prev) => ({
       ...prev,
       [activeId]: {
         items: [],
         discountAmount: 0,
-        taxPercent: state.taxPercent,
+        taxPercent: 18,
         stage: "products",
         customer: undefined,
         invoiceId: undefined,
+        invoiceNumber: undefined,
       },
     }));
-  }, [activeId, state.taxPercent]);
+  }, [activeId]);
 
   const handleCancelPayment = useCallback(() => {
     setState({ stage: "customer" });
@@ -506,6 +543,23 @@ export default function BillingWorkspace() {
             totalAmount={total}
             onPaymentComplete={handlePaymentComplete}
             onCancel={handleCancelPayment}
+          />
+        )}
+
+        {state.stage === "complete" && state.invoiceId && (
+          <InvoiceComplete
+            className="fixed inset-0 z-50"
+            invoiceId={state.invoiceId}
+            invoiceNumber={state.invoiceNumber || `INV-${Date.now()}`}
+            customer={state.customer}
+            items={state.items}
+            subTotal={subTotal}
+            discountAmount={discountAmount}
+            taxPercent={state.taxPercent}
+            taxAmount={tax}
+            total={total}
+            onBack={handleBackFromComplete}
+            onNewBill={handleNewBill}
           />
         )}
       </div>
