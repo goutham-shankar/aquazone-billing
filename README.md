@@ -16,7 +16,7 @@ A modern, feature-rich Point of Sale (POS) system built with Next.js, featuring 
 - **Tab Overview**: Summary bar showing total orders and revenue across all tabs
 
 ### 🖨️ **Advanced Billing & Printing**
-- **Thermal Printer Support**: 80mm receipt format optimized for thermal printers
+- **Thermal Printer   Support**: 80mm receipt format optimized for thermal printers
 - **Professional Invoices**: Complete invoice details with business info and itemization
 - **Print & Save**: Integrated save and print functionality
 - **Sample Data**: Quick sample bill generation for testing
