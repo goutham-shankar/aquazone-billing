@@ -68,43 +68,43 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center pt-20">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-xl">
-        <div className="flex items-center gap-3 p-4 border-b">
-          <Search className="w-5 h-5 text-gray-400" />
+      <div className="w-full max-w-2xl bg-white dark:bg-[color:var(--popover)] rounded-lg shadow-xl">
+        <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <Search className="w-5 h-5 text-gray-400 dark:text-[color:var(--muted-foreground)]" />
           <input
             ref={inputRef}
             type="text"
             placeholder="Search customers, products, invoices..."
-            className="flex-1 outline-none text-lg"
+            className="flex-1 outline-none text-lg bg-transparent text-gray-900 dark:text-[color:var(--foreground)]"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && onClose()}
           />
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X className="w-5 h-5 text-gray-400" />
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-transparent rounded">
+            <X className="w-5 h-5 text-gray-400 dark:text-[color:var(--muted-foreground)]" />
           </button>
         </div>
 
         <div className="max-h-96 overflow-y-auto">
-          {loading && (
-            <div className="p-4 text-center text-gray-500">Searching...</div>
-          )}
+            {loading && (
+              <div className="p-4 text-center text-gray-500 dark:text-[color:var(--muted-foreground)]">Searching...</div>
+            )}
 
           {!loading && query && (
             <>
               {results.customers.length > 0 && (
                 <div className="p-2">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2 px-2">Customers</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 px-2 dark:text-[color:var(--muted-foreground)]">Customers</h3>
                   {results.customers.map((customer) => (
                     <button
                       key={customer._id}
                       onClick={() => handlePick("customer", customer)}
-                      className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded text-left"
+                      className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-transparent rounded text-left"
                     >
                       <User className="w-4 h-4 text-blue-500" />
                       <div>
                         <div className="font-medium">{customer.name}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-[color:var(--muted-foreground)]">
                           {customer.phone} • {customer.email}
                         </div>
                       </div>
@@ -115,17 +115,17 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
               {results.products.length > 0 && (
                 <div className="p-2">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2 px-2">Products</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 px-2 dark:text-[color:var(--muted-foreground)]">Products</h3>
                   {results.products.map((product) => (
                     <button
                       key={product._id}
                       onClick={() => handlePick("product", product)}
-                      className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded text-left"
+                      className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-transparent rounded text-left"
                     >
                       <Package className="w-4 h-4 text-green-500" />
                       <div>
                         <div className="font-medium">{product.name}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-[color:var(--muted-foreground)]">
                           ₹{product.retailPrice || product.price} • Stock: {product.stock}
                         </div>
                       </div>
@@ -136,17 +136,17 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
               {results.invoices.length > 0 && (
                 <div className="p-2">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2 px-2">Invoices</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 px-2 dark:text-[color:var(--muted-foreground)]">Invoices</h3>
                   {results.invoices.map((invoice) => (
                     <button
                       key={invoice._id}
                       onClick={() => handlePick("invoice", invoice)}
-                      className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded text-left"
+                      className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-transparent rounded text-left"
                     >
                       <FileText className="w-4 h-4 text-purple-500" />
                       <div>
                         <div className="font-medium">Invoice #{invoice._id.slice(-6)}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-[color:var(--muted-foreground)]">
                           ₹{invoice.amount?.total} • {new Date(invoice.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -156,7 +156,7 @@ export default function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               )}
 
               {results.customers.length === 0 && results.products.length === 0 && results.invoices.length === 0 && (
-                <div className="p-4 text-center text-gray-500">No results found</div>
+                <div className="p-4 text-center text-gray-500 dark:text-[color:var(--muted-foreground)]">No results found</div>
               )}
             </>
           )}

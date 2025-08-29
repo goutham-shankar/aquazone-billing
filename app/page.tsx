@@ -473,7 +473,7 @@ export default function BillingWorkspace() {
             {/* Left side - Cart with discount button */}
             <div className="flex flex-col gap-4">
               <CartView
-                className="bg-white/80 border-slate-200 flex-1"
+                className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 flex-1"
                 items={state.items}
                 onInc={(id: string) => changeQty(id, 1)}
                 onDec={(id: string) => changeQty(id, -1)}
@@ -493,7 +493,7 @@ export default function BillingWorkspace() {
 
             {/* Right side - Product catalog full height */}
             <ProductCatalog
-              className="bg-white/80 border-slate-200 h-full"
+              className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 h-full"
               onAdd={(p: any) => addProduct(p)}
               cartItems={state.items}
             />
@@ -503,24 +503,24 @@ export default function BillingWorkspace() {
         {state.stage === "customer" && (
           <div className="h-full grid grid-rows-[1fr,auto] gap-4">
             <CustomerSection
-              className="bg-white/80 border-slate-200 h-full"
+              className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 h-full"
               customer={state.customer}
               onCustomerSelect={setCustomer}
               onClear={() => setCustomer(undefined)}
             />
-            <div className="bg-white/80 border border-slate-200 rounded-lg p-4">
+            <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <button
                   onClick={backToProducts}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50"
+                  className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 rounded-md hover:bg-slate-50 dark:hover:bg-gray-700"
                 >
                   Back to Products
                 </button>
                 <div className="text-right">
-                  <div className="text-lg font-semibold">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
                     Total: ₹{total.toFixed(2)}
                   </div>
-                  <div className="text-sm text-slate-600">
+                  <div className="text-sm text-slate-600 dark:text-gray-400">
                     {state.items.length} items
                   </div>
                 </div>
@@ -538,7 +538,7 @@ export default function BillingWorkspace() {
 
         {state.stage === "payment" && state.invoiceId && (
           <PaymentSection
-            className="bg-white/80 border-slate-200 h-full"
+            className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 h-full"
             invoiceId={state.invoiceId}
             totalAmount={total}
             onPaymentComplete={handlePaymentComplete}
