@@ -169,40 +169,38 @@ export function EnhancedSidebar() {
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Sidebar header */}
         <div className="border-b border-gray-200 dark:border-gray-700">
           <div
             className={classNames(
-              "flex items-center gap-2 px-4 py-4 relative",
+              "flex items-center gap-2 px-4 py-4",
               isCollapsed ? "justify-center px-2" : ""
             )}
           >
             <div className="flex flex-col items-center justify-center">
-              <div
-                className="w-8 h-8 bg-black dark:bg-white rounded-full cursor-pointer flex items-center justify-center"
+              <Image
+                src="/logo_golden.svg"
+                alt="Logo"
+                width={500}
+                height={500}
                 onClick={toggleCollapse}
+                className="rounded-full dark:invert brightness-0 cursor-pointer"
                 style={{ cursor: "pointer" }}
-              >
-                <span className="text-white dark:text-black text-xs font-bold">
-                  NGA
-                </span>
-              </div>
+                onError={(e) => {
+                  console.warn("Logo image failed to load:", e);
+                }}
+              />
               {!isCollapsed && (
-                <Link
-                  href="/"
-                  className="flex items-center font-semibold text-center truncate mt-2"
+                <p
+                  className="flex items-center font-semibold text-center truncate"
                 >
-                  <span className="text-lg text-gray-900 dark:text-white">
-                    New Golden AquaZone
-                  </span>
-                </Link>
+                  <span className="text-lg">Billing Management</span>
+                </p>
               )}
             </div>
 
-            {/* Collapse button - desktop only */}
             <button
               className={classNames(
-                "hidden lg:block h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 absolute top-1/2 -translate-y-1/2 right-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center transition-colors",
+                "hidden lg:block h-8 w-8 rounded absolute top-3 right-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-500",
                 isCollapsed ? "hidden" : ""
               )}
               onClick={toggleCollapse}
@@ -210,15 +208,16 @@ export function EnhancedSidebar() {
             >
               <ChevronLeft
                 className={classNames(
-                  "h-4 w-4 transition-transform text-gray-600 dark:text-gray-300",
+                  "h-4 w-4 transition-transform",
                   isCollapsed ? "rotate-180" : ""
                 )}
                 aria-hidden="true"
               />
             </button>
+
+            {/* Close button - only on mobile */}
           </div>
         </div>
-
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
           <nav className="flex-1 space-y-1 p-3" aria-label="Main navigation">
@@ -227,7 +226,6 @@ export function EnhancedSidebar() {
             ))}
           </nav>
         </div>
-
         {/* Bottom navigation */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-3">
           <nav className="space-y-1" aria-label="Secondary navigation">
